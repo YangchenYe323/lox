@@ -1,0 +1,15 @@
+[workspace]
+members = ["rlox"]
+
+[workspace.package]
+authors = ["Yangchen <eikasia30@gmail.com>"]
+description = "My implementation of crafting-intepreters project in rust"
+edition = "2021"
+keywords = ["interpreter"]
+license = "Apache-2.0"
+repository = "https://github.com/YangchenYe323/crafting-interpreter"
+
+[workspace.dependencies]
+clap = { version = "4.2.2", features = ["derive"] }
+miette = { version = "5.7.0", features = ["fancy"] }
+thiserror = "1.0.40"
