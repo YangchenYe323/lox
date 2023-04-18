@@ -4,15 +4,14 @@
 
 mod lexer;
 
-use lexer::Lexer;
-use miette::Result;
+use miette::{GraphicalReportHandler, Result};
 
 use crate::lexer::Lex;
 
 /// The interpreter that handles interpreting and executing source code.
 #[derive(Debug)]
 pub struct Interpreter {
-  line: u32,
+  reporter: GraphicalReportHandler,
 }
 
 impl Default for Interpreter {
@@ -23,25 +22,30 @@ impl Default for Interpreter {
 
 impl Interpreter {
   pub fn new() -> Self {
-    Self { line: 1 }
+    Self {
+      reporter: GraphicalReportHandler::new(),
+    }
   }
 
   /// Interprete and run a lox source string
   pub fn run(&mut self, source: &'_ str) -> Result<()> {
-    let mut lexer = Lexer::new(source, self.line);
     println!("{:?}", source);
-    lexer.scan_tokens();
 
-    let lex = lexer.into_result();
+    let lex = lexer::lex(source);
 
     match lex {
-      Lex::Success(tokens, line) => {
+      Lex::Success(tokens) => {
         println!("{:?}", tokens);
-        self.line = line + 1;
       }
       Lex::Failure(reports) => {
         for report in reports {
-          println!("{}", report);
+          let mut out = String::new();
+          let report = report.with_source_code(source.to_string());
+          self
+            .reporter
+            .render_report(&mut out, report.as_ref())
+            .unwrap();
+          println!("{}", out);
         }
       }
     }

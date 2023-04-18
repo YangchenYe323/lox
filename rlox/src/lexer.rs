@@ -3,19 +3,27 @@ use std::{iter::Peekable, str::Chars};
 use miette::Report;
 
 use self::{
-  diagnostics::UnexpectedCharacter,
+  diagnostics::{Span, UnexpectedCharacter},
   tokens::{Token, TokenKind, TokenKind::*},
 };
 
 mod diagnostics;
 mod tokens;
 
+/// Utility functions that produce a lex result directly
+/// from a source string
+pub fn lex<'a>(source: &'a str) -> Lex {
+  let mut lexer = Lexer::new(source);
+  lexer.scan_tokens();
+  lexer.into_result()
+}
+
 /// The output of lexing, returning either a stream of tokens
 /// or a stream of error diagnostics
 #[derive(Debug)]
 pub enum Lex {
   /// On success, return a vector of tokens and the last line scanned
-  Success(Vec<Token>, u32),
+  Success(Vec<Token>),
   /// On failure, return all the error diagnostics
   Failure(Vec<Report>),
 }
@@ -24,16 +32,17 @@ pub enum Lex {
 pub struct Lexer<'a> {
   /// Source string cursor
   source: LookaheadCharIter<'a>,
+  /// Current line number
   line: u32,
   tokens: Vec<Token>,
   errors: Vec<Report>,
 }
 
 impl<'a> Lexer<'a> {
-  pub fn new(source: &'a str, line: u32) -> Lexer<'a> {
+  pub fn new(source: &'a str) -> Lexer<'a> {
     Self {
       source: LookaheadCharIter::new(source),
-      line,
+      line: 1,
       tokens: vec![],
       errors: vec![],
     }
@@ -47,7 +56,7 @@ impl<'a> Lexer<'a> {
 
   pub fn into_result(self) -> Lex {
     if self.errors.is_empty() {
-      Lex::Success(self.tokens, self.line)
+      Lex::Success(self.tokens)
     } else {
       Lex::Failure(self.errors)
     }
@@ -110,7 +119,11 @@ impl<'a> Lexer<'a> {
         return;
       }
       c => {
-        self.errors.push(UnexpectedCharacter(c, self.line).into());
+        // This is an unexpected character
+        let span = Span::new(self.source.current_pos() - 1, self.source.current_pos());
+        self
+          .errors
+          .push(UnexpectedCharacter(c, self.line, span).into());
         return;
       }
     };
@@ -181,6 +194,7 @@ impl<'a> Lexer<'a> {
 pub struct LookaheadCharIter<'a> {
   chars: Peekable<Chars<'a>>,
   current: Option<char>,
+  current_position: u32,
 }
 
 impl<'a> LookaheadCharIter<'a> {
@@ -188,11 +202,13 @@ impl<'a> LookaheadCharIter<'a> {
     Self {
       chars: source.chars().peekable(),
       current: None,
+      current_position: 0,
     }
   }
 
   pub fn advance(&mut self) {
     self.current = self.chars.next();
+    self.current_position += 1;
   }
 
   pub fn at_end(&mut self) -> bool {
@@ -205,5 +221,11 @@ impl<'a> LookaheadCharIter<'a> {
 
   pub fn current(&self) -> Option<char> {
     self.current
+  }
+
+  /// The current cursor position. This points at the character AFTER the current
+  /// character we're looking at.
+  pub fn current_pos(&self) -> u32 {
+    self.current_position
   }
 }
