@@ -1,9 +1,11 @@
-use std::{iter::Peekable, str::Chars};
+use std::str::Chars;
 
 use miette::Report;
 
+use crate::INTERNER;
+
 use self::{
-  diagnostics::{Span, UnexpectedCharacter},
+  diagnostics::{Span, UnexpectedCharacter, UnterminatedString},
   tokens::{Token, TokenKind, TokenKind::*},
 };
 
@@ -31,7 +33,7 @@ pub enum Lex {
 /// [Lexer] accepts a raw stream of characters and output a stream of [Token]
 pub struct Lexer<'a> {
   /// Source string cursor
-  source: LookaheadCharIter<'a>,
+  char_reader: LookaheadCharIter<'a>,
   /// Current line number
   line: u32,
   tokens: Vec<Token>,
@@ -41,7 +43,7 @@ pub struct Lexer<'a> {
 impl<'a> Lexer<'a> {
   pub fn new(source: &'a str) -> Lexer<'a> {
     Self {
-      source: LookaheadCharIter::new(source),
+      char_reader: LookaheadCharIter::new(source),
       line: 1,
       tokens: vec![],
       errors: vec![],
@@ -70,6 +72,8 @@ impl<'a> Lexer<'a> {
       return;
     }
 
+    // After matching, the cursor should fall on the last character WITHIN the matched token
+    // so that next time scan_token is called, the leading `advance` skips that token
     let kind = match self.cur() {
       '(' => LParen,
       ')' => RParen,
@@ -114,13 +118,43 @@ impl<'a> Lexer<'a> {
           Greater
         }
       }
+      '"' => {
+        let s = self.char_reader.chars.as_str();
+        // start_pos points at the first character after the leading "
+        let start_pos = self.char_reader.next_pos();
+        // Pass the leading "
+        self.advance();
+
+        while !self.at_end() && self.cur() != '"' {
+          if self.cur() == '\n' {
+            self.line += 1;
+          }
+          self.advance();
+        }
+
+        // end_pos points at the first character after the trailing " or the length of the source text
+        // if end is reached
+        let end_pos = self.char_reader.next_pos() - 1;
+        if self.at_end() {
+          self
+            .errors
+            .push(UnterminatedString(Span::new(start_pos, end_pos)).into());
+          return;
+        }
+
+        let string_range = ..(end_pos - start_pos) as usize;
+        let string = &s[string_range];
+        let symbol = INTERNER.with_borrow_mut(|interner| interner.intern(string));
+
+        Str(symbol)
+      }
       c if c.is_whitespace() => {
         self.skip_whitespaces();
         return;
       }
       c => {
         // This is an unexpected character
-        let span = Span::new(self.source.current_pos() - 1, self.source.current_pos());
+        let span = Span::new(self.char_reader.next_pos() - 1, self.char_reader.next_pos());
         self
           .errors
           .push(UnexpectedCharacter(c, self.line, span).into());
@@ -133,19 +167,20 @@ impl<'a> Lexer<'a> {
 
   #[inline(always)]
   fn at_end(&mut self) -> bool {
-    self.source.at_end()
+    self.char_reader.at_end()
   }
 
   #[inline(always)]
   fn cur(&self) -> char {
-    self.source.current().unwrap()
+    self.char_reader.current().unwrap()
   }
 
   #[inline(always)]
   fn advance(&mut self) {
-    self.source.advance();
+    self.char_reader.advance();
   }
 
+  #[inline(always)]
   fn advance_if_match(&mut self, target: char) -> bool {
     if self.peek() == Some(target) {
       self.advance();
@@ -157,7 +192,7 @@ impl<'a> Lexer<'a> {
 
   #[inline(always)]
   fn peek(&mut self) -> Option<char> {
-    self.source.peek()
+    self.char_reader.peek()
   }
 
   #[inline(always)]
@@ -178,54 +213,70 @@ impl<'a> Lexer<'a> {
   /// Skip all whitespace characters.
   /// Precondition: we are currently looking at a whitespace
   fn skip_whitespaces(&mut self) {
-    while self.cur().is_whitespace() {
+    if self.cur() == '\n' {
+      self.line += 1;
+    }
+    while self.peek().map_or(false, |c| c.is_whitespace()) {
+      self.advance();
       if self.cur() == '\n' {
         self.line += 1;
       }
-      if self.at_end() {
-        break;
-      }
-      self.advance();
     }
   }
 }
 
 #[derive(Debug)]
 pub struct LookaheadCharIter<'a> {
-  chars: Peekable<Chars<'a>>,
+  chars: Chars<'a>,
   current: Option<char>,
-  current_position: u32,
+  next_cursor_position: u32,
 }
 
 impl<'a> LookaheadCharIter<'a> {
   pub fn new(source: &'a str) -> LookaheadCharIter<'a> {
     Self {
-      chars: source.chars().peekable(),
+      chars: source.chars(),
       current: None,
-      current_position: 0,
+      next_cursor_position: 0,
     }
   }
 
   pub fn advance(&mut self) {
     self.current = self.chars.next();
-    self.current_position += 1;
+    self.next_cursor_position += 1;
   }
 
   pub fn at_end(&mut self) -> bool {
-    matches!((self.current, self.chars.peek()), (None, None))
+    matches!((self.current, self.peek()), (None, None))
   }
 
   pub fn peek(&mut self) -> Option<char> {
-    self.chars.peek().cloned()
+    self.chars.clone().next()
   }
 
+  /// The current character we are looking at. None if haven't start looking
+  /// or the source is ended
   pub fn current(&self) -> Option<char> {
     self.current
   }
 
-  /// The current cursor position. This points at the character AFTER the current
-  /// character we're looking at.
-  pub fn current_pos(&self) -> u32 {
-    self.current_position
+  /// The next cursor position. This points at the character AFTER the current
+  /// character we're looking at. Initially this is 0
+  pub fn next_pos(&self) -> u32 {
+    self.next_cursor_position
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn test_peek() {
+    let mut reader = LookaheadCharIter::new("123");
+    assert_eq!(Some('1'), reader.peek());
+    reader.advance();
+    assert_eq!(Some('1'), reader.current());
+    assert_eq!(Some('2'), reader.peek());
   }
 }

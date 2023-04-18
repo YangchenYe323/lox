@@ -1,3 +1,5 @@
+use crate::symbol::SymbolId;
+
 #[derive(Debug)]
 pub struct Token {
   kind: TokenKind,
@@ -35,10 +37,11 @@ pub enum TokenKind {
   Less,
   LessEq,
 
+  // Identifier
+  Ident(SymbolId),
   // Literals
-  Ident(String),
-  Str(String),
-  Number(String, f64),
+  Str(SymbolId),
+  Number(SymbolId, f64),
 
   // Keywords
   And,

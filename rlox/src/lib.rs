@@ -1,12 +1,29 @@
-#![warn(rust_2018_idioms, missing_debug_implementations)]
+#![warn(rust_2018_idioms)]
+#![feature(
+  dropck_eyepatch,
+  new_uninit,
+  maybe_uninit_slice,
+  strict_provenance,
+  ptr_alignment_type,
+  local_key_cell_methods
+)]
 
 //! This crate implements a tree-walking interpreter in rust from [crafting-interpreters](https://craftinginterpreters.com/)
 
+mod arena;
 mod lexer;
+mod symbol;
+
+use std::cell::RefCell;
 
 use miette::{GraphicalReportHandler, Result};
+use symbol::Interner;
 
 use crate::lexer::Lex;
+
+std::thread_local! {
+  pub static INTERNER: RefCell<Interner>  = RefCell::new(Interner::default());
+}
 
 /// The interpreter that handles interpreting and executing source code.
 #[derive(Debug)]
@@ -36,6 +53,7 @@ impl Interpreter {
     match lex {
       Lex::Success(tokens) => {
         println!("{:?}", tokens);
+        INTERNER.with_borrow(|it| println!("{:?}", it));
       }
       Lex::Failure(reports) => {
         for report in reports {

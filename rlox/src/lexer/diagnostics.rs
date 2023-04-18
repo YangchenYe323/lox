@@ -25,3 +25,7 @@ impl From<Span> for SourceSpan {
 #[derive(Debug, Error, Diagnostic)]
 #[error("Unexpected character {0} on line {1}")]
 pub struct UnexpectedCharacter(pub char, pub u32, #[label] pub Span);
+
+#[derive(Debug, Error, Diagnostic)]
+#[error("Unterminated string literal")]
+pub struct UnterminatedString(#[label] pub Span);
