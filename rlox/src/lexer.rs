@@ -5,7 +5,7 @@ use miette::Report;
 use crate::INTERNER;
 
 use self::{
-  diagnostics::{Span, UnexpectedCharacter, UnterminatedString},
+  diagnostics::{Span, UnexpectedCharacter, UnterminatedComments, UnterminatedString},
   tokens::{Token, TokenKind, TokenKind::*},
 };
 
@@ -92,6 +92,10 @@ impl<'a> Lexer<'a> {
         self.skip_comments();
         return;
       }
+      '/' if self.peek() == Some('*') => {
+        self.skip_block_comments();
+        return;
+      }
       '/' => Slash,
       '!' => {
         if self.advance_if_match('=') {
@@ -173,6 +177,15 @@ impl<'a> Lexer<'a> {
         let symbol = INTERNER.with_borrow_mut(|interner| interner.intern(string));
         Number(symbol, value)
       }
+      c if c.is_alphabetic() => {
+        let start_pos = self.char_reader.current_pos();
+        while self.peek().map_or(false, |c| c.is_alphanumeric()) {
+          self.advance();
+        }
+        let end_pos = self.char_reader.next_pos();
+        let s = self.char_reader.text_at(start_pos, end_pos);
+        Self::keyword_or_identifier(s)
+      }
       c if c.is_whitespace() => {
         self.skip_whitespaces();
         return;
@@ -240,6 +253,47 @@ impl<'a> Lexer<'a> {
     }
   }
 
+  /// Skip block comments.
+  /// We are currently looking at the / character in a /*
+  fn skip_block_comments(&mut self) {
+    let mut stack = 1;
+    let start_pos = self.char_reader.current_pos();
+    // skip /
+    self.advance();
+    loop {
+      let Some(peek) = self.peek() else { break; };
+      match peek {
+        '\n' => self.line += 1,
+        '/' => {
+          if self.peek_second() == Some('*') {
+            stack += 1;
+            self.advance();
+          }
+        }
+        '*' => {
+          if self.peek_second() == Some('/') {
+            stack -= 1;
+            self.advance();
+            if stack == 0 {
+              self.advance();
+              break;
+            }
+          }
+        }
+        _ => (),
+      }
+      self.advance();
+    }
+
+    let end_pos = self.char_reader.current_pos();
+
+    if stack != 0 {
+      self
+        .errors
+        .push(UnterminatedComments(Span::new(start_pos, end_pos)).into());
+    }
+  }
+
   /// Skip all whitespace characters.
   /// Precondition: we are currently looking at a whitespace
   fn skip_whitespaces(&mut self) {
@@ -250,6 +304,32 @@ impl<'a> Lexer<'a> {
       self.advance();
       if self.cur() == '\n' {
         self.line += 1;
+      }
+    }
+  }
+
+  fn keyword_or_identifier(s: &str) -> TokenKind {
+    match s {
+      // Keywords
+      "and" => And,
+      "class" => Class,
+      "else" => Else,
+      "false" => False,
+      "fun" => Fun,
+      "for" => For,
+      "if" => If,
+      "nil" => Nil,
+      "or" => Or,
+      "print" => Print,
+      "return" => Return,
+      "super" => Super,
+      "this" => This,
+      "true" => True,
+      "var" => Var,
+      "while" => While,
+      s => {
+        let symbol = INTERNER.with_borrow_mut(|interner| interner.intern(s));
+        Ident(symbol)
       }
     }
   }
