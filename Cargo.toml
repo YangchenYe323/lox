@@ -14,3 +14,4 @@ clap = { version = "4.2.2", features = ["derive"] }
 miette = { version = "5.7.0", features = ["fancy"] }
 thiserror = "1.0.40"
 rustc-hash = "1.1.0"
+rustyline = "11.0.0"
