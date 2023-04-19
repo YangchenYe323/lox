@@ -14,7 +14,7 @@ mod tokens;
 
 /// Utility functions that produce a lex result directly
 /// from a source string
-pub fn lex<'a>(source: &'a str) -> Lex {
+pub fn lex_source(source: &'_ str) -> Lex {
   let mut lexer = Lexer::new(source);
   lexer.scan_tokens();
   lexer.into_result()
@@ -50,12 +50,15 @@ impl<'a> Lexer<'a> {
     }
   }
 
+  /// Perform a complete pass over the source code and generate all
+  /// the tokens and errors along the way
   pub fn scan_tokens(&mut self) {
     while !self.at_end() {
       self.scan_token();
     }
   }
 
+  /// Consume lexer and produce lexing result
   pub fn into_result(self) -> Lex {
     if self.errors.is_empty() {
       Lex::Success(self.tokens)
@@ -119,7 +122,6 @@ impl<'a> Lexer<'a> {
         }
       }
       '"' => {
-        let s = self.char_reader.chars.as_str();
         // start_pos points at the first character after the leading "
         let start_pos = self.char_reader.next_pos();
         // Pass the leading "
@@ -134,7 +136,7 @@ impl<'a> Lexer<'a> {
 
         // end_pos points at the first character after the trailing " or the length of the source text
         // if end is reached
-        let end_pos = self.char_reader.next_pos() - 1;
+        let end_pos = self.char_reader.current_pos();
         if self.at_end() {
           self
             .errors
@@ -142,11 +144,34 @@ impl<'a> Lexer<'a> {
           return;
         }
 
-        let string_range = ..(end_pos - start_pos) as usize;
-        let string = &s[string_range];
+        let string = self.char_reader.text_at(start_pos, end_pos);
         let symbol = INTERNER.with_borrow_mut(|interner| interner.intern(string));
 
         Str(symbol)
+      }
+      c if c.is_ascii_digit() => {
+        let start_pos = self.char_reader.current_pos();
+        while self.peek().map_or(false, |c| c.is_ascii_digit()) {
+          self.advance();
+        }
+
+        // Here we are sitting at the last digit before potential dot if any
+        if self.peek().map_or(false, |c| c == '.')
+          && self.peek_second().map_or(false, |c| c.is_ascii_digit())
+        {
+          // Match floating point numbers
+          // advance dot
+          self.advance();
+          while self.peek().map_or(false, |c| c.is_ascii_digit()) {
+            self.advance();
+          }
+        }
+
+        let end_pos = self.char_reader.next_pos();
+        let string = self.char_reader.text_at(start_pos, end_pos);
+        let value: f64 = string.parse().unwrap();
+        let symbol = INTERNER.with_borrow_mut(|interner| interner.intern(string));
+        Number(symbol, value)
       }
       c if c.is_whitespace() => {
         self.skip_whitespaces();
@@ -154,7 +179,7 @@ impl<'a> Lexer<'a> {
       }
       c => {
         // This is an unexpected character
-        let span = Span::new(self.char_reader.next_pos() - 1, self.char_reader.next_pos());
+        let span = Span::new(self.char_reader.current_pos(), self.char_reader.next_pos());
         self
           .errors
           .push(UnexpectedCharacter(c, self.line, span).into());
@@ -196,6 +221,11 @@ impl<'a> Lexer<'a> {
   }
 
   #[inline(always)]
+  fn peek_second(&mut self) -> Option<char> {
+    self.char_reader.peek_second()
+  }
+
+  #[inline(always)]
   fn finish_token(&self, kind: TokenKind) -> Token {
     Token::new(kind, self.line)
   }
@@ -227,6 +257,7 @@ impl<'a> Lexer<'a> {
 
 #[derive(Debug)]
 pub struct LookaheadCharIter<'a> {
+  text: &'a str,
   chars: Chars<'a>,
   current: Option<char>,
   next_cursor_position: u32,
@@ -235,6 +266,7 @@ pub struct LookaheadCharIter<'a> {
 impl<'a> LookaheadCharIter<'a> {
   pub fn new(source: &'a str) -> LookaheadCharIter<'a> {
     Self {
+      text: source,
       chars: source.chars(),
       current: None,
       next_cursor_position: 0,
@@ -254,6 +286,12 @@ impl<'a> LookaheadCharIter<'a> {
     self.chars.clone().next()
   }
 
+  pub fn peek_second(&mut self) -> Option<char> {
+    let mut it = self.chars.clone();
+    it.next();
+    it.next()
+  }
+
   /// The current character we are looking at. None if haven't start looking
   /// or the source is ended
   pub fn current(&self) -> Option<char> {
@@ -264,6 +302,18 @@ impl<'a> LookaheadCharIter<'a> {
   /// character we're looking at. Initially this is 0
   pub fn next_pos(&self) -> u32 {
     self.next_cursor_position
+  }
+
+  /// The current cursor position. This points at the current character we are looking at
+  ///
+  /// # panic
+  /// If called before the first advance
+  pub fn current_pos(&self) -> u32 {
+    self.next_cursor_position.checked_sub(1).unwrap()
+  }
+
+  pub fn text_at(&self, start: u32, end: u32) -> &'a str {
+    &self.text[start as usize..end as usize]
   }
 }
 

@@ -1,4 +1,5 @@
 #![warn(rust_2018_idioms)]
+#![allow(clippy::uninlined_format_args, clippy::mut_from_ref)]
 #![feature(
   dropck_eyepatch,
   new_uninit,
@@ -48,7 +49,7 @@ impl Interpreter {
   pub fn run(&mut self, source: &'_ str) -> Result<()> {
     println!("{:?}", source);
 
-    let lex = lexer::lex(source);
+    let lex = lexer::lex_source(source);
 
     match lex {
       Lex::Success(tokens) => {
