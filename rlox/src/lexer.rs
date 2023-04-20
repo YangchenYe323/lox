@@ -6,7 +6,7 @@ use crate::INTERNER;
 
 use self::{
   diagnostics::{Span, UnexpectedCharacter, UnterminatedComments, UnterminatedString},
-  tokens::{Token, TokenKind, TokenKind::*},
+  tokens::{Token, TokenKind, TokenKind::*, valid_token_part, valid_token_start},
 };
 
 mod diagnostics;
@@ -177,9 +177,9 @@ impl<'a> Lexer<'a> {
         let symbol = INTERNER.with_borrow_mut(|interner| interner.intern(string));
         Number(symbol, value)
       }
-      c if c.is_alphabetic() => {
+      c if valid_token_start(c) => {
         let start_pos = self.char_reader.current_pos();
-        while self.peek().map_or(false, |c| c.is_alphanumeric()) {
+        while self.peek().map_or(false, valid_token_part) {
           self.advance();
         }
         let end_pos = self.char_reader.next_pos();

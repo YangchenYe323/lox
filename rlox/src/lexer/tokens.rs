@@ -64,3 +64,17 @@ pub enum TokenKind {
   // End of file
   Eof,
 }
+
+/// Valid characters to be the start of token in lox:
+/// [a-z][A-Z]_
+#[inline(always)]
+pub fn valid_token_start(c: char) -> bool {
+  c.is_ascii_alphabetic() || c == '_'
+}
+
+/// Valid characters to be part of token (not start) in lox:
+/// [a-z][A-Z][0-9]_
+#[inline(always)]
+pub fn valid_token_part(c: char) -> bool {
+  c.is_ascii_alphanumeric() || c == '_'
+}
