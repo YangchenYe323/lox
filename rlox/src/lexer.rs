@@ -88,11 +88,11 @@ impl<'a> Lexer<'a> {
       '+' => Plus,
       ';' => Semicolon,
       '*' => Star,
-      '/' if self.peek() == Some('/') => {
+      '/' if self.peek_eq('/') => {
         self.skip_comments();
         return;
       }
-      '/' if self.peek() == Some('*') => {
+      '/' if self.peek_eq('*') => {
         self.skip_block_comments();
         return;
       }
@@ -155,18 +155,18 @@ impl<'a> Lexer<'a> {
       }
       c if c.is_ascii_digit() => {
         let start_pos = self.char_reader.current_pos();
-        while self.peek().map_or(false, |c| c.is_ascii_digit()) {
+        while self.peek_match(|c| c.is_ascii_digit()) {
           self.advance();
         }
 
         // Here we are sitting at the last digit before potential dot if any
-        if self.peek().map_or(false, |c| c == '.')
-          && self.peek_second().map_or(false, |c| c.is_ascii_digit())
+        if self.peek_eq('.')
+          && self.peek_second_match(|c| c.is_ascii_digit())
         {
           // Match floating point numbers
           // advance dot
           self.advance();
-          while self.peek().map_or(false, |c| c.is_ascii_digit()) {
+          while self.peek_match(|c| c.is_ascii_digit()) {
             self.advance();
           }
         }
@@ -179,7 +179,7 @@ impl<'a> Lexer<'a> {
       }
       c if valid_token_start(c) => {
         let start_pos = self.char_reader.current_pos();
-        while self.peek().map_or(false, valid_token_part) {
+        while self.peek_match(valid_token_part) {
           self.advance();
         }
         let end_pos = self.char_reader.next_pos();
@@ -210,7 +210,7 @@ impl<'a> Lexer<'a> {
 
   #[inline(always)]
   fn cur(&self) -> char {
-    self.char_reader.current().unwrap()
+    self.char_reader.current()
   }
 
   #[inline(always)]
@@ -220,7 +220,7 @@ impl<'a> Lexer<'a> {
 
   #[inline(always)]
   fn advance_if_match(&mut self, target: char) -> bool {
-    if self.peek() == Some(target) {
+    if self.peek_eq(target) {
       self.advance();
       true
     } else {
@@ -234,8 +234,39 @@ impl<'a> Lexer<'a> {
   }
 
   #[inline(always)]
+  fn peek_match<F>(&mut self, f: F) -> bool 
+    where
+      F: FnOnce(char) -> bool
+  {
+    self.peek().map_or(false, f)
+  }
+
+  #[inline(always)]
+  fn peek_eq(&mut self, expected: char) -> bool {
+    self.peek_match(|c| c == expected)
+  }
+
+  #[inline(always)]
+  fn peek_neq(&mut self, exclude: char) -> bool {
+    self.peek_match(|c| c != exclude)
+  }
+
+  #[inline(always)]
   fn peek_second(&mut self) -> Option<char> {
     self.char_reader.peek_second()
+  }
+
+  #[inline(always)]
+  fn peek_second_match<F>(&mut self, f: F) -> bool 
+    where
+      F: FnOnce(char) -> bool
+  {
+    self.peek_second().map_or(false, f)
+  }
+
+  #[inline(always)]
+  fn peek_second_eq(&mut self, expected: char) -> bool {
+    self.peek_second_match(|c| c == expected)
   }
 
   #[inline(always)]
@@ -246,8 +277,8 @@ impl<'a> Lexer<'a> {
   /// Skip line comments until (not consuming) the '\n' or eof after the comments
   fn skip_comments(&mut self) {
     // we are at //
-    if self.cur() == '/' && self.peek() == Some('/') {
-      while self.peek().map_or(false, |c| c != '\n') {
+    if self.cur() == '/' && self.peek_eq('/') {
+      while self.peek_neq('\n') {
         self.advance();
       }
     }
@@ -265,13 +296,13 @@ impl<'a> Lexer<'a> {
       match peek {
         '\n' => self.line += 1,
         '/' => {
-          if self.peek_second() == Some('*') {
+          if self.peek_second_eq('*') {
             stack += 1;
             self.advance();
           }
         }
         '*' => {
-          if self.peek_second() == Some('/') {
+          if self.peek_second_eq('/') {
             stack -= 1;
             self.advance();
             if stack == 0 {
@@ -300,7 +331,7 @@ impl<'a> Lexer<'a> {
     if self.cur() == '\n' {
       self.line += 1;
     }
-    while self.peek().map_or(false, |c| c.is_whitespace()) {
+    while self.peek_match(char::is_whitespace) {
       self.advance();
       if self.cur() == '\n' {
         self.line += 1;
@@ -374,8 +405,11 @@ impl<'a> LookaheadCharIter<'a> {
 
   /// The current character we are looking at. None if haven't start looking
   /// or the source is ended
-  pub fn current(&self) -> Option<char> {
-    self.current
+  /// 
+  /// # panic
+  /// If called before the first advance or when ended
+  pub fn current(&self) -> char {
+    self.current.unwrap()
   }
 
   /// The next cursor position. This points at the character AFTER the current
@@ -406,7 +440,7 @@ mod tests {
     let mut reader = LookaheadCharIter::new("123");
     assert_eq!(Some('1'), reader.peek());
     reader.advance();
-    assert_eq!(Some('1'), reader.current());
+    assert_eq!('1', reader.current());
     assert_eq!(Some('2'), reader.peek());
   }
 }
