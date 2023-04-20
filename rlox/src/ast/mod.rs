@@ -4,7 +4,7 @@ use std::ops::Deref;
 
 use crate::common::{span::Span, symbol::SymbolId};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct AstNodeId(indextree::NodeId);
 
 impl From<indextree::NodeId> for AstNodeId {
@@ -39,6 +39,7 @@ pub enum AstNodeKind {
   BinaryOp(BinaryOp),
   UnaryExpr,
   StrLiteral(StrLiteral),
+  NumLiteral(NumLiteral),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -58,6 +59,9 @@ pub enum BinaryOp {
 #[derive(Debug)]
 pub struct StrLiteral(SymbolId);
 
+#[derive(Debug)]
+pub struct NumLiteral(SymbolId, f64);
+
 pub struct SyntaxTree {
   arena: indextree::Arena<AstNode>,
   root: AstNodeId,
@@ -69,7 +73,7 @@ pub struct SyntaxTreeBuilder {
 }
 
 impl SyntaxTreeBuilder {
-  pub fn build_string_literal(&mut self, span: Span, value: SymbolId) -> AstNodeId {
+  pub fn string_literal(&mut self, span: Span, value: SymbolId) -> AstNodeId {
     let inner = AstNode {
       span,
       inner: AstNodeKind::StrLiteral(StrLiteral(value)),
@@ -77,7 +81,15 @@ impl SyntaxTreeBuilder {
     AstNodeId::from(self.arena.new_node(inner))
   }
 
-  pub fn build_binary_op(&mut self, span: Span, op: BinaryOp) -> AstNodeId {
+  pub fn numeric_literal(&mut self, span: Span, raw: SymbolId, value: f64) -> AstNodeId {
+    let inner = AstNode {
+      span,
+      inner: AstNodeKind::NumLiteral(NumLiteral(raw, value)),
+    };
+    AstNodeId::from(self.arena.new_node(inner))
+  }
+
+  pub fn binary_operator(&mut self, span: Span, op: BinaryOp) -> AstNodeId {
     let inner = AstNode {
       span,
       inner: AstNodeKind::BinaryOp(op),
@@ -85,7 +97,7 @@ impl SyntaxTreeBuilder {
     AstNodeId::from(self.arena.new_node(inner))
   }
 
-  pub fn build_binary_expr(
+  pub fn binary_expression(
     &mut self,
     span: Span,
     left: AstNodeId,

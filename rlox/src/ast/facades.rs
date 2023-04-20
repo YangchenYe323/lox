@@ -46,6 +46,7 @@ impl<'a> AstNodePtr<'a> {
 pub enum Expression<'a> {
   BinaryExpression(BinaryExpression<'a>),
   StringLiteral(StringLiteral<'a>),
+  NumberLiteral(NumericLiteral<'a>),
 }
 
 impl<'a> Expression<'a> {
@@ -53,6 +54,7 @@ impl<'a> Expression<'a> {
     match ptr.get().inner {
       AstNodeKind::BinaryExpr => Self::BinaryExpression(BinaryExpression(ptr)),
       AstNodeKind::StrLiteral(_) => Self::StringLiteral(StringLiteral(ptr)),
+      AstNodeKind::NumLiteral(_) => Self::NumberLiteral(NumericLiteral(ptr)),
       _ => unreachable!(),
     }
   }
@@ -93,3 +95,6 @@ impl<'a> BinaryExpression<'a> {
 
 #[derive(Debug)]
 pub struct StringLiteral<'a>(AstNodePtr<'a>);
+
+#[derive(Debug)]
+pub struct NumericLiteral<'a>(AstNodePtr<'a>);
