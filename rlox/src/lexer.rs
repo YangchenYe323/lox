@@ -12,15 +12,13 @@ use self::{
 mod diagnostics;
 mod tokens;
 
-/// Utility functions that produce a lex result directly
-/// from a source string
 pub fn lex_source(source: &'_ str) -> Lex {
   let mut lexer = Lexer::new(source);
   lexer.scan_tokens();
   lexer.into_result()
 }
 
-/// The output of lexing, returning either a stream of tokens
+/// The output of lexing, either a stream of tokens
 /// or a stream of error diagnostics
 #[derive(Debug)]
 pub enum Lex {
