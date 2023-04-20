@@ -1,4 +1,4 @@
-use crate::symbol::SymbolId;
+use crate::common::symbol::SymbolId;
 
 #[derive(Debug)]
 pub struct Token {

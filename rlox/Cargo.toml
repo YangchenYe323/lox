@@ -16,3 +16,4 @@ miette = { workspace = true }
 thiserror = { workspace = true }
 rustc-hash = { workspace = true }
 rustyline = { workspace = true }
+indextree = { workspace = true }

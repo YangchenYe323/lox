@@ -15,3 +15,4 @@ miette = { version = "5.7.0", features = ["fancy"] }
 thiserror = "1.0.40"
 rustc-hash = "1.1.0"
 rustyline = "11.0.0"
+indextree = "4.6.0"

@@ -11,14 +11,15 @@
 
 //! This crate implements a tree-walking interpreter in rust from [crafting-interpreters](https://craftinginterpreters.com/)
 
-mod arena;
+mod ast;
+mod common;
 mod lexer;
-mod symbol;
+mod parser;
 
 use std::cell::RefCell;
 
+use common::symbol::Interner;
 use miette::{GraphicalReportHandler, Result};
-use symbol::Interner;
 
 use crate::lexer::Lex;
 

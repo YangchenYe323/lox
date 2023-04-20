@@ -2,7 +2,7 @@
 
 use rustc_hash::FxHashMap;
 
-use crate::arena::DroplessArena;
+use super::arena::DroplessArena;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SymbolId(u32);
