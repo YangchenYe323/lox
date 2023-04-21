@@ -1,3 +1,11 @@
+//! This module implements the core [SyntaxTree] and [AstNode] types. They are easily
+//! composable and mutable, arena-backed tree structrues, where every node has an arbitrary of
+//! child nodes. Note also [AstNode] is untyped, i.e., an expression and a class declaration all have
+//! the same time and can be child/parent of each other technically.
+//!
+//! The design goal is to materialize lox-specific grammar lazily so that the tree can be easily mutated for
+//! optimization.
+
 pub mod facades;
 
 use std::ops::Deref;

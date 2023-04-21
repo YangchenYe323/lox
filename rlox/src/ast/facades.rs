@@ -1,4 +1,4 @@
-//! Immutable facades of the Abstract Syntax Trees Nodes.
+//! This module implements facades, which are immutable views of the [SyntaxTree].
 //! They understand the grammatical structure of the lox programming language (in contrast,
 //! [AstNode] is just data structure, where every node can have arbitrary number of children
 //! and any kind of node can be parent of any other kind)
@@ -60,13 +60,14 @@ pub enum Expr<'a> {
 
 impl<'a> Expr<'a> {
   pub fn new(ptr: AstNodePtr<'a>) -> Self {
+    use self::Expr::*;
     match ptr.get().inner {
-      AstNodeKind::BinaryExpr(_) => Self::Binary(BinaryExpr(ptr)),
-      AstNodeKind::StrLiteral(_, _) => Self::String(StringLit(ptr)),
-      AstNodeKind::NumLiteral(_, _) => Self::Number(NumericLit(ptr)),
-      AstNodeKind::UnaryExpr(_) => Self::Unary(UnaryExpr(ptr)),
-      AstNodeKind::BoolLiteral(_) => Self::Bool(BoolLit(ptr)),
-      AstNodeKind::Nil => Self::Nil(NilLit(ptr)),
+      AstNodeKind::BinaryExpr(_) => Binary(BinaryExpr(ptr)),
+      AstNodeKind::StrLiteral(_, _) => String(StringLit(ptr)),
+      AstNodeKind::NumLiteral(_, _) => Number(NumericLit(ptr)),
+      AstNodeKind::UnaryExpr(_) => Unary(UnaryExpr(ptr)),
+      AstNodeKind::BoolLiteral(_) => Bool(BoolLit(ptr)),
+      AstNodeKind::Nil => Nil(NilLit(ptr)),
       // _ => unreachable!(),
     }
   }
