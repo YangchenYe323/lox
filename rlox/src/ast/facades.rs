@@ -52,7 +52,7 @@ pub enum Expression<'a> {
 impl<'a> Expression<'a> {
   pub fn new(ptr: AstNodePtr<'a>) -> Self {
     match ptr.get().inner {
-      AstNodeKind::BinaryExpr => Self::BinaryExpression(BinaryExpression(ptr)),
+      AstNodeKind::BinaryExpr(_) => Self::BinaryExpression(BinaryExpression(ptr)),
       AstNodeKind::StrLiteral(_) => Self::StringLiteral(StringLiteral(ptr)),
       AstNodeKind::NumLiteral(_) => Self::NumberLiteral(NumericLiteral(ptr)),
       _ => unreachable!(),
@@ -68,17 +68,15 @@ impl<'a> BinaryExpression<'a> {
     Self(AstNodePtr::new(arena, cursor))
   }
 
+  #[inline(always)]
+  pub fn ast_node(&self) -> &AstNode {
+    self.0.get()
+  }
+
   pub fn operator(&self) -> BinaryOp {
-    let op = self.0.nth_child(2).unwrap();
-    let node = op.get();
-    match &node.inner {
-      AstNodeKind::BinaryOp(op) => *op,
-      other => {
-        panic!(
-          "Binary expression has an invalid operator node: {:?}",
-          other
-        );
-      }
+    match &self.ast_node().inner {
+      AstNodeKind::BinaryExpr(op) => *op,
+      other => unreachable!(),
     }
   }
 

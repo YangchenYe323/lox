@@ -35,8 +35,7 @@ pub struct AstNode {
 
 #[derive(Debug)]
 pub enum AstNodeKind {
-  BinaryExpr,
-  BinaryOp(BinaryOp),
+  BinaryExpr(BinaryOp),
   UnaryExpr,
   StrLiteral(StrLiteral),
   NumLiteral(NumLiteral),
@@ -89,28 +88,19 @@ impl SyntaxTreeBuilder {
     AstNodeId::from(self.arena.new_node(inner))
   }
 
-  pub fn binary_operator(&mut self, span: Span, op: BinaryOp) -> AstNodeId {
-    let inner = AstNode {
-      span,
-      inner: AstNodeKind::BinaryOp(op),
-    };
-    AstNodeId::from(self.arena.new_node(inner))
-  }
-
   pub fn binary_expression(
     &mut self,
     span: Span,
     left: AstNodeId,
-    op: AstNodeId,
+    op: BinaryOp,
     right: AstNodeId,
   ) -> AstNodeId {
     let inner = AstNode {
       span,
-      inner: AstNodeKind::BinaryExpr,
+      inner: AstNodeKind::BinaryExpr(op),
     };
     let binary_expr = AstNodeId::from(self.arena.new_node(inner));
     binary_expr.append(indextree::NodeId::from(left), &mut self.arena);
-    binary_expr.append(indextree::NodeId::from(op), &mut self.arena);
     binary_expr.append(indextree::NodeId::from(right), &mut self.arena);
     binary_expr
   }
