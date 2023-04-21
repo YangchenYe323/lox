@@ -1,6 +1,11 @@
-//! Immutable facades of the Abstract Syntax Trees. They are typed views into the raw Syntax Tree
-//! facade types provides functinalities like pretty-printing the grammar-aware structure of the
-//! syntax tree and grammar-aware access into the syntax tree.
+//! Immutable facades of the Abstract Syntax Trees Nodes.
+//! They understand the grammatical structure of the lox programming language (in contrast,
+//! [AstNode] is just data structure, where every node can have arbitrary number of children
+//! and any kind of node can be parent of any other kind)
+//! Facades provides a checked handle to the raw data ndoes, e.g., a [BinaryExpr] has two children, both are [Expression]
+//! and are the left and right operand of the binary expression.
+//!
+//! Facades are building blocks to functinalities like pretty-printing the syntax tree, implementing visitor patterns, etc.
 
 use serde::{ser::SerializeStruct, Serialize};
 use thiserror::Error;
