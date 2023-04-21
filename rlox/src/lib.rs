@@ -21,7 +21,11 @@ use std::cell::RefCell;
 use common::symbol::Interner;
 use miette::{GraphicalReportHandler, Result};
 
-use crate::lexer::Lex;
+use crate::{
+  ast::facades::{AstNodePtr, Expr},
+  lexer::Lex,
+  parser::Parser,
+};
 
 std::thread_local! {
   pub static INTERNER: RefCell<Interner>  = RefCell::new(Interner::default());
@@ -54,11 +58,21 @@ impl Interpreter {
 
     match lex {
       Lex::Success(tokens) => {
-        for token in tokens {
+        for token in &tokens {
           print!("{} ", token);
         }
         println!();
         INTERNER.with_borrow(|it| println!("{:?}", it));
+
+        let mut parser = Parser::new(tokens);
+        let expr = parser.expression();
+        {
+          let arena = parser.arena();
+          let ptr = AstNodePtr::new(arena, expr);
+          let expression = Expr::new(ptr);
+          let s = serde_json::to_string_pretty(&expression).unwrap();
+          println!("{}", s);
+        }
       }
       Lex::Failure(reports) => {
         for report in reports {

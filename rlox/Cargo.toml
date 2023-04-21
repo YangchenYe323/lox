@@ -17,3 +17,5 @@ thiserror = { workspace = true }
 rustc-hash = { workspace = true }
 rustyline = { workspace = true }
 indextree = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }

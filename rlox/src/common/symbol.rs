@@ -1,10 +1,11 @@
 //! Code copied from [rust](https://github.com/rust-lang/rust/blob/master/compiler/rustc_span/src/symbol.rs)
 
 use rustc_hash::FxHashMap;
+use serde::Serialize;
 
 use super::arena::DroplessArena;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 pub struct SymbolId(u32);
 
 /// [Interner] is responsible for assigning all the symbols (literals, identifiers) in the program a unique
@@ -53,5 +54,9 @@ impl Interner {
     // #91445 for details.
     self.names.insert(string, name);
     name
+  }
+
+  pub fn get(&self, symbol: SymbolId) -> &'static str {
+    self.strings[symbol.0 as usize]
   }
 }

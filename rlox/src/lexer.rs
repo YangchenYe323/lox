@@ -6,8 +6,10 @@ use crate::{common::span::Span, INTERNER};
 
 use self::{
   diagnostics::{UnexpectedCharacter, UnterminatedComments, UnterminatedString},
-  tokens::{valid_token_part, valid_token_start, Token, TokenKind, TokenKind::*},
+  tokens::{valid_token_part, valid_token_start, TokenKind::*},
 };
+
+pub use self::tokens::{Token, TokenKind};
 
 mod diagnostics;
 mod tokens;

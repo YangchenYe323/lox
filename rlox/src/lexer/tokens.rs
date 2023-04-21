@@ -2,9 +2,9 @@ use crate::common::{span::Span, symbol::SymbolId};
 
 #[derive(Debug)]
 pub struct Token {
-  kind: TokenKind,
-  span: Span,
-  line: u32,
+  pub kind: TokenKind,
+  pub span: Span,
+  pub line: u32,
 }
 
 impl std::fmt::Display for Token {
@@ -25,7 +25,7 @@ impl Token {
   }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum TokenKind {
   // Single Character Tokens
   LParen,

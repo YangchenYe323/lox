@@ -16,3 +16,5 @@ thiserror = "1.0.40"
 rustc-hash = "1.1.0"
 rustyline = "11.0.0"
 indextree = "4.6.0"
+serde = { version = "1.0.160", features = ["derive"] }
+serde_json = "1.0.96"
