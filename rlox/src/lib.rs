@@ -66,12 +66,23 @@ impl Interpreter {
 
         let mut parser = Parser::new(tokens);
         let expr = parser.expression();
-        {
-          let arena = parser.arena();
-          let ptr = AstNodePtr::new(arena, expr);
-          let expression = Expr::new(ptr);
-          let s = serde_json::to_string_pretty(&expression).unwrap();
-          println!("{}", s);
+        match expr {
+          Ok(expr) => {
+            let arena = parser.arena();
+            let ptr = AstNodePtr::new(arena, expr);
+            let expression = Expr::new(ptr);
+            let s = serde_json::to_string_pretty(&expression).unwrap();
+            println!("{}", s);
+          }
+          Err(err) => {
+            let mut out = String::new();
+            let report = err.with_source_code(source.to_string());
+            self
+              .reporter
+              .render_report(&mut out, report.as_ref())
+              .unwrap();
+            println!("{}", out);
+          }
         }
       }
       Lex::Failure(reports) => {

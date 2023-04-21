@@ -1,6 +1,9 @@
-use crate::common::{span::Span, symbol::SymbolId};
+use crate::{
+  common::{span::Span, symbol::SymbolId},
+  INTERNER,
+};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Token {
   pub kind: TokenKind,
   pub span: Span,
@@ -25,7 +28,7 @@ impl Token {
   }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TokenKind {
   // Single Character Tokens
   LParen,
@@ -76,6 +79,52 @@ pub enum TokenKind {
 
   // End of file
   Eof,
+}
+
+impl TokenKind {
+  pub fn to_str(&self) -> &'static str {
+    match self {
+      TokenKind::LParen => "(",
+      TokenKind::RParen => ")",
+      TokenKind::LBrace => "{",
+      TokenKind::RBrace => "}",
+      TokenKind::Comma => ",",
+      TokenKind::Dot => ",",
+      TokenKind::Minus => "-",
+      TokenKind::Plus => "+",
+      TokenKind::Semicolon => ";",
+      TokenKind::Slash => "/",
+      TokenKind::Star => "*",
+      TokenKind::Bang => "!",
+      TokenKind::BangEq => "!=",
+      TokenKind::Eq => "=",
+      TokenKind::EqEq => "==",
+      TokenKind::Greater => ">",
+      TokenKind::GreaterEq => ">=",
+      TokenKind::Less => "<",
+      TokenKind::LessEq => "<=",
+      TokenKind::Ident(symbol) => INTERNER.with_borrow(|interner| interner.get(*symbol)),
+      TokenKind::Str(symbol) => INTERNER.with_borrow(|interner| interner.get(*symbol)),
+      TokenKind::Number(symbol, _) => INTERNER.with_borrow(|interner| interner.get(*symbol)),
+      TokenKind::And => "and",
+      TokenKind::Class => "class",
+      TokenKind::Else => "else",
+      TokenKind::False => "false",
+      TokenKind::Fun => "fun",
+      TokenKind::For => "for",
+      TokenKind::If => "if",
+      TokenKind::Nil => "nil",
+      TokenKind::Or => "or",
+      TokenKind::Print => "print",
+      TokenKind::Return => "return",
+      TokenKind::Super => "super",
+      TokenKind::This => "this",
+      TokenKind::True => "true",
+      TokenKind::Var => "var",
+      TokenKind::While => "while",
+      TokenKind::Eof => "EOF",
+    }
+  }
 }
 
 /// Valid characters to be the start of token in lox:

@@ -1,13 +1,22 @@
+mod diagnostics;
+
+use miette::Report;
+
 use crate::{
   ast::{AstNode, AstNodeId, BinaryOp, SyntaxTreeBuilder, UnaryOp},
   lexer::{Token, TokenKind},
   INTERNER,
 };
 
+use self::diagnostics::UnexpectedToken;
+
+type ParserResult<T, E = Report> = std::result::Result<T, E>;
+
 pub struct Parser {
   tokens: Vec<Token>,
   builder: SyntaxTreeBuilder,
   current_idx: usize,
+  recovered_errors: Vec<Report>,
 }
 
 impl Parser {
@@ -16,6 +25,7 @@ impl Parser {
       tokens,
       builder: SyntaxTreeBuilder::default(),
       current_idx: 0,
+      recovered_errors: vec![],
     }
   }
 
@@ -24,72 +34,74 @@ impl Parser {
   }
 
   /// expression → equality ;
-  pub fn expression(&mut self) -> AstNodeId {
+  pub fn expression(&mut self) -> ParserResult<AstNodeId> {
     self.equality()
   }
 
   /// equality → comparison ( ( "!=" | "==" ) comparison )* ;
-  pub fn equality(&mut self) -> AstNodeId {
-    let mut base = self.comparison();
+  pub fn equality(&mut self) -> ParserResult<AstNodeId> {
+    let mut base = self.comparison()?;
     while matches!(self.cur_token().kind, TokenKind::BangEq | TokenKind::EqEq) {
       let op = token_to_binary_op(self.cur_token());
       self.advance();
-      let term = self.comparison();
+      let term = self.comparison()?;
       base = self.builder.binary_expression(base, op, term);
     }
-    base
+    Ok(base)
   }
 
   /// comparison → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
-  pub fn comparison(&mut self) -> AstNodeId {
-    let mut base = self.term();
+  pub fn comparison(&mut self) -> ParserResult<AstNodeId> {
+    let mut base = self.term()?;
     while matches!(
       self.cur_token().kind,
       TokenKind::LessEq | TokenKind::Less | TokenKind::Greater | TokenKind::GreaterEq
     ) {
       let op = token_to_binary_op(self.cur_token());
       self.advance();
-      let term = self.term();
+      let term = self.term()?;
       base = self.builder.binary_expression(base, op, term);
     }
-    base
+    Ok(base)
   }
 
   /// term → factor ( ( "-" | "+" ) factor )* ;
-  pub fn term(&mut self) -> AstNodeId {
-    let mut base = self.factor();
+  pub fn term(&mut self) -> ParserResult<AstNodeId> {
+    let mut base = self.factor()?;
     while matches!(self.cur_token().kind, TokenKind::Plus | TokenKind::Minus) {
       let op = token_to_binary_op(self.cur_token());
       self.advance();
-      let term = self.factor();
+      let term = self.factor()?;
       base = self.builder.binary_expression(base, op, term);
     }
-    base
+    Ok(base)
   }
 
   /// factor → unary ( ( "/" | "*" ) unary )* ;
-  pub fn factor(&mut self) -> AstNodeId {
-    let mut base = self.unary();
+  pub fn factor(&mut self) -> ParserResult<AstNodeId> {
+    let mut base = self.unary()?;
     while matches!(self.cur_token().kind, TokenKind::Star | TokenKind::Slash) {
       let op = token_to_binary_op(self.cur_token());
       self.advance();
-      let term = self.unary();
+      let term = self.unary()?;
       base = self.builder.binary_expression(base, op, term);
     }
-    base
+    Ok(base)
   }
 
   ///unary → ( "!" | "-" ) unary
   ///        | primary ;  
-  pub fn unary(&mut self) -> AstNodeId {
+  pub fn unary(&mut self) -> ParserResult<AstNodeId> {
     match self.cur_token().kind {
       TokenKind::Bang | TokenKind::Minus => {
         let op = token_to_unary_op(self.cur_token());
         self.advance();
-        let arg = self.unary();
-        self
-          .builder
-          .unary_expression(self.cur_span_start(), op, arg)
+        let arg = self.unary()?;
+        Ok(
+          self
+            .builder
+            .unary_expression(self.cur_span_start(), op, arg),
+        )
       }
       _ => self.primary(),
     }
@@ -97,39 +109,43 @@ impl Parser {
 
   /// primary → NUMBER | STRING | "true" | "false" | "nil"
   ///   | "(" expression ")" ;
-  pub fn primary(&mut self) -> AstNodeId {
+  pub fn primary(&mut self) -> ParserResult<AstNodeId> {
     let span = self.cur_token().span;
     match self.cur_token().kind {
       TokenKind::Number(symbol, value) => {
         self.advance();
-        self.builder.numeric_literal(span, symbol, value)
+        Ok(self.builder.numeric_literal(span, symbol, value))
       }
       TokenKind::Str(symbol) => {
         self.advance();
         let value = INTERNER.with_borrow(|interner| interner.get(symbol));
-        self.builder.string_literal(span, symbol, value)
+        Ok(self.builder.string_literal(span, symbol, value))
       }
       TokenKind::True => {
         self.advance();
-        self.builder.bool_literal(span, true)
+        Ok(self.builder.bool_literal(span, true))
       }
       TokenKind::False => {
         self.advance();
-        self.builder.bool_literal(span, false)
+        Ok(self.builder.bool_literal(span, false))
       }
       TokenKind::Nil => {
         self.advance();
-        self.builder.nil(span)
+        Ok(self.builder.nil(span))
       }
       TokenKind::LParen => {
         self.advance();
-        let expr = self.expression();
-        self.advance_expect(TokenKind::RParen);
-        expr
+        let expr = self.expression()?;
+        if !self.advance_if_match(TokenKind::RParen) {
+          let actual = self.cur_token().kind.to_str();
+          let span = self.cur_token().span;
+          self
+            .recovered_errors
+            .push(UnexpectedToken(span, actual).into());
+        }
+        Ok(expr)
       }
-      _ => {
-        unimplemented!()
-      }
+      token => Err(UnexpectedToken(self.cur_token().span, token.to_str()).into()),
     }
   }
 
@@ -145,13 +161,13 @@ impl Parser {
     self.current_idx += 1;
   }
 
-  pub fn advance_expect(&mut self, kind: TokenKind) -> Token {
-    if self.cur_token().kind != kind {
-      panic!("Expect kind {:?}, got {:?}", kind, self.cur_token());
+  pub fn advance_if_match(&mut self, kind: TokenKind) -> bool {
+    if self.cur_token().kind == kind {
+      self.advance();
+      true
+    } else {
+      false
     }
-    let token = self.tokens[0].clone();
-    self.advance();
-    token
   }
 }
 
