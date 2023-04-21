@@ -1,8 +1,7 @@
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Span {
-  start: u32,
-  end: u32,
+  pub start: u32,
+  pub end: u32,
 }
 
 impl Span {

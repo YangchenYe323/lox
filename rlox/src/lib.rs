@@ -54,7 +54,10 @@ impl Interpreter {
 
     match lex {
       Lex::Success(tokens) => {
-        println!("{:?}", tokens);
+        for token in tokens {
+          print!("{} ", token);
+        }
+        println!();
         INTERNER.with_borrow(|it| println!("{:?}", it));
       }
       Lex::Failure(reports) => {

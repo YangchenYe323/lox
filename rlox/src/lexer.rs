@@ -2,11 +2,11 @@ use std::str::Chars;
 
 use miette::Report;
 
-use crate::INTERNER;
+use crate::{common::span::Span, INTERNER};
 
 use self::{
-  diagnostics::{Span, UnexpectedCharacter, UnterminatedComments, UnterminatedString},
-  tokens::{Token, TokenKind, TokenKind::*, valid_token_part, valid_token_start},
+  diagnostics::{UnexpectedCharacter, UnterminatedComments, UnterminatedString},
+  tokens::{valid_token_part, valid_token_start, Token, TokenKind, TokenKind::*},
 };
 
 mod diagnostics;
@@ -68,8 +68,9 @@ impl<'a> Lexer<'a> {
   fn scan_token(&mut self) {
     self.advance();
 
+    let span_start = self.char_reader.current_pos();
     if self.at_end() {
-      self.tokens.push(self.finish_token(Eof));
+      self.tokens.push(self.finish_token(Eof, span_start));
       return;
     }
 
@@ -158,9 +159,7 @@ impl<'a> Lexer<'a> {
         }
 
         // Here we are sitting at the last digit before potential dot if any
-        if self.peek_eq('.')
-          && self.peek_second_match(|c| c.is_ascii_digit())
-        {
+        if self.peek_eq('.') && self.peek_second_match(|c| c.is_ascii_digit()) {
           // Match floating point numbers
           // advance dot
           self.advance();
@@ -198,7 +197,7 @@ impl<'a> Lexer<'a> {
       }
     };
 
-    self.tokens.push(self.finish_token(kind));
+    self.tokens.push(self.finish_token(kind, span_start));
   }
 
   #[inline(always)]
@@ -232,9 +231,9 @@ impl<'a> Lexer<'a> {
   }
 
   #[inline(always)]
-  fn peek_match<F>(&mut self, f: F) -> bool 
-    where
-      F: FnOnce(char) -> bool
+  fn peek_match<F>(&mut self, f: F) -> bool
+  where
+    F: FnOnce(char) -> bool,
   {
     self.peek().map_or(false, f)
   }
@@ -255,9 +254,9 @@ impl<'a> Lexer<'a> {
   }
 
   #[inline(always)]
-  fn peek_second_match<F>(&mut self, f: F) -> bool 
-    where
-      F: FnOnce(char) -> bool
+  fn peek_second_match<F>(&mut self, f: F) -> bool
+  where
+    F: FnOnce(char) -> bool,
   {
     self.peek_second().map_or(false, f)
   }
@@ -268,8 +267,12 @@ impl<'a> Lexer<'a> {
   }
 
   #[inline(always)]
-  fn finish_token(&self, kind: TokenKind) -> Token {
-    Token::new(kind, self.line)
+  fn finish_token(&self, kind: TokenKind, span_start: u32) -> Token {
+    Token::new(
+      kind,
+      self.line,
+      Span::new(span_start, self.char_reader.current_pos()),
+    )
   }
 
   /// Skip line comments until (not consuming) the '\n' or eof after the comments
@@ -403,7 +406,7 @@ impl<'a> LookaheadCharIter<'a> {
 
   /// The current character we are looking at. None if haven't start looking
   /// or the source is ended
-  /// 
+  ///
   /// # panic
   /// If called before the first advance or when ended
   pub fn current(&self) -> char {

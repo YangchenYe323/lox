@@ -1,14 +1,27 @@
-use crate::common::symbol::SymbolId;
+use crate::common::{span::Span, symbol::SymbolId};
 
 #[derive(Debug)]
 pub struct Token {
   kind: TokenKind,
+  span: Span,
   line: u32,
 }
 
+impl std::fmt::Display for Token {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    std::fmt::write(
+      f,
+      format_args!(
+        "Token[{:?}(line-{},{}-{})]",
+        self.kind, self.line, self.span.start, self.span.end
+      ),
+    )
+  }
+}
+
 impl Token {
-  pub fn new(kind: TokenKind, line: u32) -> Self {
-    Self { kind, line }
+  pub fn new(kind: TokenKind, line: u32, span: Span) -> Self {
+    Self { kind, span, line }
   }
 }
 
