@@ -145,11 +145,13 @@ impl Parser {
     self.current_idx += 1;
   }
 
-  pub fn advance_expect(&mut self, kind: TokenKind) {
+  pub fn advance_expect(&mut self, kind: TokenKind) -> Token {
     if self.cur_token().kind != kind {
       panic!("Expect kind {:?}, got {:?}", kind, self.cur_token());
     }
+    let token = self.tokens[0].clone();
     self.advance();
+    token
   }
 }
 

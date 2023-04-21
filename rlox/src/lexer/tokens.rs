@@ -1,6 +1,6 @@
 use crate::common::{span::Span, symbol::SymbolId};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Token {
   pub kind: TokenKind,
   pub span: Span,
