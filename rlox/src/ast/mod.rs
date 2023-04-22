@@ -47,6 +47,7 @@ pub struct AstNode {
 
 #[derive(Debug)]
 pub enum AstNodeKind {
+  TernaryExpr,
   BinaryExpr(BinaryOp),
   UnaryExpr(UnaryOp),
   StrLiteral(SymbolId, &'static str),
@@ -162,6 +163,27 @@ impl SyntaxTreeBuilder {
     let unary_expr = AstNodeId::from(self.arena.new_node(inner));
     unary_expr.append(indextree::NodeId::from(arg), &mut self.arena);
     unary_expr
+  }
+
+  pub fn ternary_expression(
+    &mut self,
+    pred: AstNodeId,
+    conseq: AstNodeId,
+    alt: AstNodeId,
+  ) -> AstNodeId {
+    let start = self.get_span(pred).start;
+    let end = self.get_span(alt).end;
+    let inner = AstNode {
+      span: Span::new(start, end),
+      inner: AstNodeKind::TernaryExpr,
+    };
+
+    let ternary = AstNodeId::from(self.arena.new_node(inner));
+    ternary.append(indextree::NodeId::from(pred), &mut self.arena);
+    ternary.append(indextree::NodeId::from(conseq), &mut self.arena);
+    ternary.append(indextree::NodeId::from(alt), &mut self.arena);
+
+    ternary
   }
 
   fn get_span(&self, id: AstNodeId) -> Span {

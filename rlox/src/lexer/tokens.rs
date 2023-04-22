@@ -42,6 +42,8 @@ pub enum TokenKind {
   Semicolon,
   Slash,
   Star,
+  Question,
+  Colon,
 
   // One or two character tokens
   Bang,
@@ -95,6 +97,8 @@ impl TokenKind {
       TokenKind::Semicolon => ";",
       TokenKind::Slash => "/",
       TokenKind::Star => "*",
+      TokenKind::Question => "?",
+      TokenKind::Colon => ":",
       TokenKind::Bang => "!",
       TokenKind::BangEq => "!=",
       TokenKind::Eq => "=",

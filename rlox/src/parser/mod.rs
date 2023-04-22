@@ -62,9 +62,31 @@ impl Parser {
     }
   }
 
-  /// expression → equality ;
+  /// expression → ternary
   pub fn expression(&mut self) -> ParserResult<AstNodeId> {
-    self.equality()
+    self.ternary()
+  }
+
+  /// ternary → equality ;
+  ///         | equality ? ternary : ternary;
+  pub fn ternary(&mut self) -> ParserResult<AstNodeId> {
+    let base = self.equality()?;
+    // ternary expression
+    if matches!(self.cur_token().kind, TokenKind::Question) {
+      self.advance();
+      let consequence = self.ternary()?;
+      if !self.advance_if_match(TokenKind::Colon) {
+        return Self::unexpected_token(self.cur_token());
+      }
+      let alternative = self.ternary()?;
+      Ok(
+        self
+          .builder
+          .ternary_expression(base, consequence, alternative),
+      )
+    } else {
+      Ok(base)
+    }
   }
 
   /// equality → comparison ( ( "!=" | "==" ) comparison )* ;

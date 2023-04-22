@@ -85,6 +85,8 @@ impl<'a> Lexer<'a> {
       '+' => Plus,
       ';' => Semicolon,
       '*' => Star,
+      '?' => Question,
+      ':' => Colon,
       '/' if self.peek_eq('/') => {
         self.skip_comments();
         return;

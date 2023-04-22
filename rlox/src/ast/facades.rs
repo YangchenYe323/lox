@@ -50,6 +50,7 @@ impl<'a> AstNodePtr<'a> {
 
 #[derive(Debug, Serialize)]
 pub enum Expr<'a> {
+  Ternary(TernaryExpr<'a>),
   Binary(BinaryExpr<'a>),
   Unary(UnaryExpr<'a>),
   String(StringLit<'a>),
@@ -62,6 +63,7 @@ impl<'a> Expr<'a> {
   pub fn new(ptr: AstNodePtr<'a>) -> Self {
     use self::Expr::*;
     match ptr.get().inner {
+      AstNodeKind::TernaryExpr => Ternary(TernaryExpr(ptr)),
       AstNodeKind::BinaryExpr(_) => Binary(BinaryExpr(ptr)),
       AstNodeKind::StrLiteral(_, _) => String(StringLit(ptr)),
       AstNodeKind::NumLiteral(_, _) => Number(NumericLit(ptr)),
@@ -105,7 +107,7 @@ impl<'a> Serialize for BinaryExpr<'a> {
   where
     S: serde::Serializer,
   {
-    let mut state = serializer.serialize_struct("BinaryExpression", 3)?;
+    let mut state = serializer.serialize_struct("BinaryExpr", 3)?;
     let op = self.operator();
     let left = self.left_operand();
     let right = self.right_operand();
@@ -197,5 +199,42 @@ impl<'a> Serialize for NilLit<'a> {
     S: serde::Serializer,
   {
     serializer.serialize_unit_struct("Nil")
+  }
+}
+
+#[derive(Debug)]
+pub struct TernaryExpr<'a>(AstNodePtr<'a>);
+
+impl<'a> TernaryExpr<'a> {
+  pub fn predicate(&self) -> Expr<'a> {
+    let ptr = self.0.nth_child(0).unwrap();
+    Expr::new(ptr)
+  }
+
+  pub fn consequence(&self) -> Expr<'a> {
+    let ptr = self.0.nth_child(1).unwrap();
+    Expr::new(ptr)
+  }
+
+  pub fn alternative(&self) -> Expr<'a> {
+    let ptr = self.0.nth_child(2).unwrap();
+    Expr::new(ptr)
+  }
+}
+
+impl<'a> Serialize for TernaryExpr<'a> {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: serde::Serializer,
+  {
+    let p = self.predicate();
+    let c = self.consequence();
+    let a = self.alternative();
+
+    let mut state = serializer.serialize_struct("TernaryExpr", 3)?;
+    state.serialize_field("predicate", &p)?;
+    state.serialize_field("consequence", &c)?;
+    state.serialize_field("alternative", &a)?;
+    state.end()
   }
 }
