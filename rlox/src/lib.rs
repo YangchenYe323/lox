@@ -27,6 +27,8 @@ use crate::{
   parser::Parser,
 };
 
+// Global variables in the parsing context.
+// We don't support multi-threaded parser so a thread local is enough.
 std::thread_local! {
   pub static INTERNER: RefCell<Interner>  = RefCell::new(Interner::default());
 }

@@ -56,6 +56,9 @@ impl Interner {
     name
   }
 
+  /// Return the string representation of a symbol. Note that this static str reference
+  /// actually points inside the arena and might dangle if the interner is dropped later.
+  /// It is fine in our use case because we never drop the interner.
   pub fn get(&self, symbol: SymbolId) -> &'static str {
     self.strings[symbol.0 as usize]
   }

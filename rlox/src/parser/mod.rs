@@ -139,9 +139,7 @@ impl Parser {
         if !self.advance_if_match(TokenKind::RParen) {
           let actual = self.cur_token().kind.to_str();
           let span = self.cur_token().span;
-          self
-            .recovered_errors
-            .push(UnexpectedToken(span, actual).into());
+          return Err(UnexpectedToken(span, actual).into());
         }
         Ok(expr)
       }
