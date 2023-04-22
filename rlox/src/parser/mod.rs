@@ -8,9 +8,9 @@ use crate::{
   INTERNER,
 };
 
-use self::diagnostics::UnexpectedToken;
+use self::diagnostics::ParserError;
 
-type ParserResult<T, E = Report> = std::result::Result<T, E>;
+type ParserResult<T, E = ParserError> = std::result::Result<T, E>;
 
 pub struct Parser {
   tokens: Vec<Token>,
@@ -137,13 +137,11 @@ impl Parser {
         self.advance();
         let expr = self.expression()?;
         if !self.advance_if_match(TokenKind::RParen) {
-          let actual = self.cur_token().kind.to_str();
-          let span = self.cur_token().span;
-          return Err(UnexpectedToken(span, actual).into());
+          return Self::unexpected_token(self.cur_token());
         }
         Ok(expr)
       }
-      token => Err(UnexpectedToken(self.cur_token().span, token.to_str()).into()),
+      _ => Self::unexpected_token(self.cur_token()),
     }
   }
 
@@ -166,6 +164,13 @@ impl Parser {
     } else {
       false
     }
+  }
+
+  fn unexpected_token<T>(token: &Token) -> ParserResult<T> {
+    Err(ParserError::UnexpectedToken(
+      token.span,
+      token.kind.to_str(),
+    ))
   }
 }
 

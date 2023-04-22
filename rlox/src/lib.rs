@@ -19,7 +19,7 @@ mod parser;
 use std::cell::RefCell;
 
 use common::symbol::Interner;
-use miette::{GraphicalReportHandler, Result};
+use miette::{GraphicalReportHandler, Report, Result};
 
 use crate::{
   ast::facades::{AstNodePtr, Expr},
@@ -78,7 +78,7 @@ impl Interpreter {
           }
           Err(err) => {
             let mut out = String::new();
-            let report = err.with_source_code(source.to_string());
+            let report = Report::from(err).with_source_code(source.to_string());
             self
               .reporter
               .render_report(&mut out, report.as_ref())

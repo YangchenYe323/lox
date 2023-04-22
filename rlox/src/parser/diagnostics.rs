@@ -3,6 +3,9 @@ use thiserror::Error;
 
 use crate::common::span::Span;
 
+
 #[derive(Debug, Error, Diagnostic)]
-#[error("Unexpected Token {1}")]
-pub struct UnexpectedToken(#[label] pub Span, /*actual */ pub &'static str);
+pub enum ParserError {
+  #[error("Unexpected Token {1}")]
+  UnexpectedToken(#[label] Span, /*token name */&'static str),
+}
