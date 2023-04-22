@@ -14,6 +14,8 @@ use serde::Serialize;
 
 use crate::common::{span::Span, symbol::SymbolId};
 
+use self::facades::AstNodePtr;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct AstNodeId(indextree::NodeId);
 
@@ -78,12 +80,26 @@ pub struct SyntaxTree {
   root: AstNodeId,
 }
 
+impl SyntaxTree {
+  pub fn new(arena: indextree::Arena<AstNode>, root: AstNodeId) -> Self {
+    Self { arena, root }
+  }
+
+  pub fn root_ptr(&self) -> AstNodePtr<'_> {
+    AstNodePtr::new(&self.arena, self.root)
+  }
+}
+
 #[derive(Default)]
 pub struct SyntaxTreeBuilder {
   pub arena: indextree::Arena<AstNode>,
 }
 
 impl SyntaxTreeBuilder {
+  pub fn finish(self, root: AstNodeId) -> SyntaxTree {
+    SyntaxTree::new(self.arena, root)
+  }
+
   pub fn string_literal(&mut self, span: Span, raw: SymbolId, value: &'static str) -> AstNodeId {
     let inner = AstNode {
       span,

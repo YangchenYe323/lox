@@ -1,10 +1,8 @@
 mod diagnostics;
 
-use miette::Report;
-
 use crate::{
-  ast::{AstNode, AstNodeId, BinaryOp, SyntaxTreeBuilder, UnaryOp},
-  lexer::{Token, TokenKind},
+  ast::{AstNodeId, BinaryOp, SyntaxTree, SyntaxTreeBuilder, UnaryOp},
+  lexer::{lex_source, Lex, LexerError, Token, TokenKind},
   INTERNER,
 };
 
@@ -12,11 +10,46 @@ use self::diagnostics::ParserError;
 
 type ParserResult<T, E = ParserError> = std::result::Result<T, E>;
 
+pub enum Parse {
+  Success(SyntaxTree),
+  ParseError {
+    recovered: Vec<ParserError>,
+    unrecoverrable: Option<ParserError>,
+  },
+  LexError(Vec<LexerError>),
+}
+
+pub fn parse_source(source: &str) -> Parse {
+  let lex_result = lex_source(source);
+  match lex_result {
+    Lex::Success(tokens) => {
+      let mut parser = Parser::new(tokens);
+      match parser.expression() {
+        Ok(expr) => match parser.recovered_errors.is_empty() {
+          true => {
+            let tree = parser.builder.finish(expr);
+            Parse::Success(tree)
+          }
+          false => Parse::ParseError {
+            recovered: parser.recovered_errors,
+            unrecoverrable: None,
+          },
+        },
+        Err(error) => Parse::ParseError {
+          recovered: parser.recovered_errors,
+          unrecoverrable: Some(error),
+        },
+      }
+    }
+    Lex::Failure(errors) => Parse::LexError(errors),
+  }
+}
+
 pub struct Parser {
   tokens: Vec<Token>,
   builder: SyntaxTreeBuilder,
   current_idx: usize,
-  recovered_errors: Vec<Report>,
+  recovered_errors: Vec<ParserError>,
 }
 
 impl Parser {
@@ -27,10 +60,6 @@ impl Parser {
       current_idx: 0,
       recovered_errors: vec![],
     }
-  }
-
-  pub(crate) fn arena(&self) -> &indextree::Arena<AstNode> {
-    &self.builder.arena
   }
 
   /// expression → equality ;

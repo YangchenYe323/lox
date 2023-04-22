@@ -1,14 +1,10 @@
 use std::str::Chars;
 
-use miette::Report;
-
 use crate::{common::span::Span, INTERNER};
 
-use self::{
-  diagnostics::{UnexpectedCharacter, UnterminatedComments, UnterminatedString},
-  tokens::{valid_token_part, valid_token_start, TokenKind::*},
-};
+use self::tokens::{valid_token_part, valid_token_start, TokenKind::*};
 
+pub use self::diagnostics::LexerError;
 pub use self::tokens::{Token, TokenKind};
 
 mod diagnostics;
@@ -27,7 +23,7 @@ pub enum Lex {
   /// On success, return a vector of tokens and the last line scanned
   Success(Vec<Token>),
   /// On failure, return all the error diagnostics
-  Failure(Vec<Report>),
+  Failure(Vec<LexerError>),
 }
 
 /// [Lexer] accepts a raw stream of characters and output a stream of [Token]
@@ -37,7 +33,7 @@ pub struct Lexer<'a> {
   /// Current line number
   line: u32,
   tokens: Vec<Token>,
-  errors: Vec<Report>,
+  errors: Vec<LexerError>,
 }
 
 impl<'a> Lexer<'a> {
@@ -143,9 +139,9 @@ impl<'a> Lexer<'a> {
         // if end is reache
         let end_pos = self.char_reader.next_pos();
         if self.at_end() {
-          self
-            .errors
-            .push(UnterminatedString(Span::new(start_pos, end_pos)).into());
+          self.errors.push(LexerError::UnterminatedString(Span::new(
+            start_pos, end_pos,
+          )));
           return;
         }
 
@@ -194,7 +190,7 @@ impl<'a> Lexer<'a> {
         let span = Span::new(self.char_reader.current_pos(), self.char_reader.next_pos());
         self
           .errors
-          .push(UnexpectedCharacter(c, self.line, span).into());
+          .push(LexerError::UnexpectedCharacter(c, self.line, span));
         return;
       }
     };
@@ -322,9 +318,9 @@ impl<'a> Lexer<'a> {
     let end_pos = self.char_reader.current_pos();
 
     if stack != 0 {
-      self
-        .errors
-        .push(UnterminatedComments(Span::new(start_pos, end_pos)).into());
+      self.errors.push(LexerError::UnterminatedComments(Span::new(
+        start_pos, end_pos,
+      )))
     }
   }
 

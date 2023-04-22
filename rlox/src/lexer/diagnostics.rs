@@ -1,16 +1,7 @@
-use miette::{Diagnostic, SourceOffset, SourceSpan};
+use miette::Diagnostic;
 use thiserror::Error;
 
 use crate::common::span::Span;
-
-impl From<Span> for SourceSpan {
-  fn from(value: Span) -> Self {
-    SourceSpan::new(
-      SourceOffset::from(value.start as usize),
-      SourceOffset::from((value.end - value.start) as usize),
-    )
-  }
-}
 
 #[derive(Debug, Error, Diagnostic)]
 #[error("Unexpected character {0} on line {1}")]
@@ -23,3 +14,13 @@ pub struct UnterminatedString(#[label] pub Span);
 #[derive(Debug, Error, Diagnostic)]
 #[error("Unterminated block comments")]
 pub struct UnterminatedComments(#[label] pub Span);
+
+#[derive(Debug, Error, Diagnostic)]
+pub enum LexerError {
+  #[error("Unexpected character {0} on line {1}")]
+  UnexpectedCharacter(char, u32, #[label] Span),
+  #[error("Unterminated string literal")]
+  UnterminatedString(#[label] Span),
+  #[error("Unterminated block comments")]
+  UnterminatedComments(#[label] Span),
+}

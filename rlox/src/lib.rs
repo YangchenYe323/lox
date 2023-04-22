@@ -19,12 +19,11 @@ mod parser;
 use std::cell::RefCell;
 
 use common::symbol::Interner;
-use miette::{GraphicalReportHandler, Report, Result};
+use miette::{Diagnostic, GraphicalReportHandler, Report, Result};
 
 use crate::{
-  ast::facades::{AstNodePtr, Expr},
-  lexer::Lex,
-  parser::Parser,
+  ast::facades::Expr,
+  parser::{parse_source, Parse},
 };
 
 // Global variables in the parsing context.
@@ -56,50 +55,42 @@ impl Interpreter {
   pub fn run(&mut self, source: &'_ str) -> Result<()> {
     println!("{:?}", source);
 
-    let lex = lexer::lex_source(source);
+    let parse_result = parse_source(source);
 
-    match lex {
-      Lex::Success(tokens) => {
-        for token in &tokens {
-          print!("{} ", token);
+    match parse_result {
+      Parse::Success(syntax_tree) => {
+        let ptr = syntax_tree.root_ptr();
+        let expr = Expr::new(ptr);
+        println!("{}", serde_json::to_string_pretty(&expr).unwrap());
+      }
+      Parse::ParseError {
+        recovered,
+        unrecoverrable,
+      } => {
+        for error in recovered {
+          self.report_error(error, source)
         }
-        println!();
-        INTERNER.with_borrow(|it| println!("{:?}", it));
-
-        let mut parser = Parser::new(tokens);
-        let expr = parser.expression();
-        match expr {
-          Ok(expr) => {
-            let arena = parser.arena();
-            let ptr = AstNodePtr::new(arena, expr);
-            let expression = Expr::new(ptr);
-            let s = serde_json::to_string_pretty(&expression).unwrap();
-            println!("{}", s);
-          }
-          Err(err) => {
-            let mut out = String::new();
-            let report = Report::from(err).with_source_code(source.to_string());
-            self
-              .reporter
-              .render_report(&mut out, report.as_ref())
-              .unwrap();
-            println!("{}", out);
-          }
+        if let Some(err) = unrecoverrable {
+          self.report_error(err, source)
         }
       }
-      Lex::Failure(reports) => {
-        for report in reports {
-          let mut out = String::new();
-          let report = report.with_source_code(source.to_string());
-          self
-            .reporter
-            .render_report(&mut out, report.as_ref())
-            .unwrap();
-          println!("{}", out);
+      Parse::LexError(errors) => {
+        for error in errors {
+          self.report_error(error, source)
         }
       }
     }
 
     Ok(())
+  }
+
+  fn report_error<T: Diagnostic + Send + Sync + 'static>(&self, error: T, source: &str) {
+    let report = Report::from(error).with_source_code(source.to_string());
+    let mut buf = String::new();
+    self
+      .reporter
+      .render_report(&mut buf, report.as_ref())
+      .unwrap();
+    println!("{}", buf);
   }
 }
