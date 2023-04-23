@@ -1,3 +1,5 @@
+#![allow(clippy::uninlined_format_args)]
+
 use std::path::PathBuf;
 
 use clap::Parser;

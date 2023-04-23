@@ -168,9 +168,9 @@ impl Parser {
         self.advance();
         let value = INTERNER.with_borrow(|interner| interner.get(symbol));
         let value = value
-          .strip_prefix("\"")
+          .strip_prefix('"')
           .unwrap()
-          .strip_suffix("\"")
+          .strip_suffix('"')
           .unwrap();
         Ok(self.builder.string_literal(span, symbol, value))
       }

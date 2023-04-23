@@ -2,7 +2,7 @@ use std::str::Chars;
 
 use crate::{common::span::Span, INTERNER};
 
-use self::tokens::{valid_token_part, valid_token_start, TokenKind::*};
+use self::tokens::{valid_ident_part, valid_ident_start, TokenKind::*};
 
 pub use self::diagnostics::LexerError;
 pub use self::tokens::{Token, TokenKind};
@@ -174,9 +174,9 @@ impl<'a> Lexer<'a> {
         let symbol = INTERNER.with_borrow_mut(|interner| interner.intern(string));
         Number(symbol, value)
       }
-      c if valid_token_start(c) => {
+      c if valid_ident_start(c) => {
         let start_pos = self.char_reader.current_pos();
-        while self.peek_match(valid_token_part) {
+        while self.peek_match(valid_ident_part) {
           self.advance();
         }
         let end_pos = self.char_reader.next_pos();

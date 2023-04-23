@@ -1,4 +1,5 @@
 #![feature(dropck_eyepatch, new_uninit, strict_provenance)]
+#![allow(clippy::mut_from_ref)]
 
 //! Code copied from [rust](https://github.com/rust-lang/rust/blob/master/compiler/rustc_arena/src/lib.rs)
 

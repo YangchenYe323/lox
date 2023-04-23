@@ -56,7 +56,7 @@ impl<'a> AstNodePtr<'a> {
   }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone, Copy)]
 pub enum Expr<'a> {
   Ternary(TernaryExpr<'a>),
   Binary(BinaryExpr<'a>),
@@ -97,7 +97,7 @@ impl<'a> Expr<'a> {
   }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct BinaryExpr<'a>(AstNodePtr<'a>);
 
 impl<'a> BinaryExpr<'a> {
@@ -141,7 +141,7 @@ impl<'a> Serialize for BinaryExpr<'a> {
   }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct UnaryExpr<'a>(AstNodePtr<'a>);
 
 impl<'a> UnaryExpr<'a> {
@@ -177,7 +177,7 @@ impl<'a> Serialize for UnaryExpr<'a> {
   }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct StringLit<'a>(AstNodePtr<'a>);
 
 impl<'a> StringLit<'a> {
@@ -207,7 +207,7 @@ impl<'a> Serialize for StringLit<'a> {
   }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct NumericLit<'a>(AstNodePtr<'a>);
 
 impl<'a> NumericLit<'a> {
@@ -237,7 +237,7 @@ impl<'a> Serialize for NumericLit<'a> {
   }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct BoolLit<'a>(AstNodePtr<'a>);
 
 impl<'a> BoolLit<'a> {
@@ -267,7 +267,7 @@ impl<'a> Serialize for BoolLit<'a> {
   }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct NilLit<'a>(AstNodePtr<'a>);
 
 impl<'a> Spanned for NilLit<'a> {
@@ -285,7 +285,7 @@ impl<'a> Serialize for NilLit<'a> {
   }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct TernaryExpr<'a>(AstNodePtr<'a>);
 
 impl<'a> TernaryExpr<'a> {
