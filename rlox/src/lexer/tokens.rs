@@ -84,7 +84,7 @@ pub enum TokenKind {
 }
 
 impl TokenKind {
-  pub fn to_str(&self) -> &'static str {
+  pub fn to_str(self) -> &'static str {
     match self {
       TokenKind::LParen => "(",
       TokenKind::RParen => ")",
@@ -107,9 +107,9 @@ impl TokenKind {
       TokenKind::GreaterEq => ">=",
       TokenKind::Less => "<",
       TokenKind::LessEq => "<=",
-      TokenKind::Ident(symbol) => INTERNER.with_borrow(|interner| interner.get(*symbol)),
-      TokenKind::Str(symbol) => INTERNER.with_borrow(|interner| interner.get(*symbol)),
-      TokenKind::Number(symbol, _) => INTERNER.with_borrow(|interner| interner.get(*symbol)),
+      TokenKind::Ident(symbol) => INTERNER.with_borrow(|interner| interner.get(symbol)),
+      TokenKind::Str(symbol) => INTERNER.with_borrow(|interner| interner.get(symbol)),
+      TokenKind::Number(symbol, _) => INTERNER.with_borrow(|interner| interner.get(symbol)),
       TokenKind::And => "and",
       TokenKind::Class => "class",
       TokenKind::Else => "else",

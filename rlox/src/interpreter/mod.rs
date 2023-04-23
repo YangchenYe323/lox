@@ -4,8 +4,9 @@ use crate::ast::{
 };
 
 use self::{
+  diagnostics::{SpannedLoxRuntimeError, SpannedLoxRuntimeErrorWrapper},
   eval::{BinaryEval, UnaryEval},
-  types::{LoxValue, LoxValueKind},
+  types::LoxValueKind,
 };
 
 mod diagnostics;
@@ -15,7 +16,7 @@ mod types;
 pub struct Evaluator {}
 
 impl<'a> AstVisitor<'a> for Evaluator {
-  type Ret = LoxValue;
+  type Ret = Result<LoxValueKind, SpannedLoxRuntimeError>;
 
   fn visit_expression(&mut self, expr: Expr<'a>) -> Self::Ret {
     match expr {
@@ -31,54 +32,39 @@ impl<'a> AstVisitor<'a> for Evaluator {
 
   fn visit_binary_expression(&mut self, binary_expr: BinaryExpr<'a>) -> Self::Ret {
     let op = binary_expr.operator();
-    let left_operand = self.visit_expression(binary_expr.left_operand());
-    let right_operand = self.visit_expression(binary_expr.right_operand());
-    let value = op.evaluate(&left_operand.value, &right_operand.value);
-    LoxValue {
-      node: binary_expr.ast_node_id(),
-      value,
-    }
+    let left_operand = self.visit_expression(binary_expr.left_operand())?;
+    let right_operand = self.visit_expression(binary_expr.right_operand())?;
+    op.evaluate(&left_operand, &right_operand)
+      .map_err(|e| binary_expr.wrap(e))
   }
 
   fn visit_ternary_expression(&mut self, ternary_expr: TernaryExpr<'a>) -> Self::Ret {
-    let test = self.visit_expression(ternary_expr.predicate());
-    let node = ternary_expr.ast_node_id();
-    let value = match test.value.is_truthful() {
-      true => self.visit_expression(ternary_expr.consequence()).value,
-      false => self.visit_expression(ternary_expr.alternative()).value,
-    };
-    LoxValue { node, value }
+    let test = self.visit_expression(ternary_expr.predicate())?;
+    match test.is_truthful() {
+      true => self.visit_expression(ternary_expr.consequence()),
+      false => self.visit_expression(ternary_expr.alternative()),
+    }
   }
 
   fn visit_string_literal(&mut self, string_literal: StringLit<'a>) -> Self::Ret {
-    let node = string_literal.ast_node_id();
-    let value = LoxValueKind::String(string_literal.value().to_string());
-    LoxValue { node, value }
+    Ok(LoxValueKind::String(string_literal.value().to_string()))
   }
 
   fn visit_numeric_literal(&mut self, numeric_literal: NumericLit<'a>) -> Self::Ret {
-    let node = numeric_literal.ast_node_id();
-    let value = LoxValueKind::Number(numeric_literal.value());
-    LoxValue { node, value }
+    Ok(LoxValueKind::Number(numeric_literal.value()))
   }
 
   fn visit_unary_expression(&mut self, unary_expr: UnaryExpr<'a>) -> Self::Ret {
-    let node = unary_expr.ast_node_id();
     let op = unary_expr.operator();
-    let operand = self.visit_expression(unary_expr.arg());
-    let value = op.evaluate(&operand.value);
-    LoxValue { node, value }
+    let operand = self.visit_expression(unary_expr.arg())?;
+    op.evaluate(&operand).map_err(|e| unary_expr.wrap(e))
   }
 
   fn visit_bool_literal(&mut self, bool_literal: BoolLit<'a>) -> Self::Ret {
-    let node = bool_literal.ast_node_id();
-    let value = LoxValueKind::Boolean(bool_literal.value());
-    LoxValue { node, value }
+    Ok(LoxValueKind::Boolean(bool_literal.value()))
   }
 
-  fn visit_nil(&mut self, nil: NilLit<'a>) -> Self::Ret {
-    let node = nil.ast_node_id();
-    let value = LoxValueKind::Nil;
-    LoxValue { node, value }
+  fn visit_nil(&mut self, _nil: NilLit<'a>) -> Self::Ret {
+    Ok(LoxValueKind::Nil)
   }
 }

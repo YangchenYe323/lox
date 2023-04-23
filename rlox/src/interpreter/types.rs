@@ -1,11 +1,20 @@
-use crate::ast::AstNodeId;
-
 #[derive(Debug)]
 pub enum LoxValueKind {
   Number(f64),
   String(String),
   Boolean(bool),
   Nil,
+}
+
+impl std::fmt::Display for LoxValueKind {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    match self {
+      LoxValueKind::Number(number) => number.fmt(f),
+      LoxValueKind::String(s) => s.fmt(f),
+      LoxValueKind::Boolean(b) => b.fmt(f),
+      LoxValueKind::Nil => "nil".fmt(f),
+    }
+  }
 }
 
 impl LoxValueKind {
@@ -17,12 +26,13 @@ impl LoxValueKind {
       LoxValueKind::Nil => false,
     }
   }
-}
 
-#[derive(Debug)]
-pub struct LoxValue {
-  /// The AST Node this value is evaluated for
-  pub node: AstNodeId,
-  /// Inner types of the value
-  pub value: LoxValueKind,
+  pub fn type_name(&self) -> &'static str {
+    match self {
+      LoxValueKind::Number(_) => "Number",
+      LoxValueKind::String(_) => "String",
+      LoxValueKind::Boolean(_) => "Boolean",
+      LoxValueKind::Nil => "Nil",
+    }
+  }
 }

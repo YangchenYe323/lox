@@ -151,6 +151,7 @@ impl DroplessArena {
   }
 
   #[inline]
+  #[allow(dead_code)]
   pub fn alloc<T>(&self, object: T) -> &mut T {
     assert!(!std::mem::needs_drop::<T>());
 

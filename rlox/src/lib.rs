@@ -55,8 +55,6 @@ impl Interpreter {
 
   /// Interprete and run a lox source string
   pub fn run(&mut self, source: &'_ str) -> Result<()> {
-    println!("{:?}", source);
-
     let parse_result = parse_source(source);
 
     match parse_result {
@@ -65,7 +63,10 @@ impl Interpreter {
         let expr = Expr::new(ptr);
         let mut evaluator = Evaluator {};
         let result = evaluator.visit_expression(expr);
-        println!("{:?}", result);
+        match result {
+          Ok(value) => println!("{}", value),
+          Err(error) => self.report_error(error, source),
+        }
       }
       Parse::ParseError {
         recovered,

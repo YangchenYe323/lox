@@ -67,6 +67,20 @@ pub enum Expr<'a> {
   Nil(NilLit<'a>),
 }
 
+impl<'a> Spanned for Expr<'a> {
+  fn span(&self) -> Span {
+    match self {
+      Expr::Ternary(e) => e.span(),
+      Expr::Binary(e) => e.span(),
+      Expr::Unary(e) => e.span(),
+      Expr::String(e) => e.span(),
+      Expr::Number(e) => e.span(),
+      Expr::Bool(e) => e.span(),
+      Expr::Nil(e) => e.span(),
+    }
+  }
+}
+
 impl<'a> Expr<'a> {
   pub fn new(ptr: AstNodePtr<'a>) -> Self {
     use self::Expr::*;
@@ -81,28 +95,12 @@ impl<'a> Expr<'a> {
       // _ => unreachable!(),
     }
   }
-
-  pub fn ast_node_id(&self) -> AstNodeId {
-    match self {
-      Expr::Ternary(e) => e.ast_node_id(),
-      Expr::Binary(e) => e.ast_node_id(),
-      Expr::Unary(e) => e.ast_node_id(),
-      Expr::String(e) => e.ast_node_id(),
-      Expr::Number(e) => e.ast_node_id(),
-      Expr::Bool(e) => e.ast_node_id(),
-      Expr::Nil(e) => e.ast_node_id(),
-    }
-  }
 }
 
 #[derive(Debug)]
 pub struct BinaryExpr<'a>(AstNodePtr<'a>);
 
 impl<'a> BinaryExpr<'a> {
-  pub fn ast_node_id(&self) -> AstNodeId {
-    self.0.cursor
-  }
-
   pub fn operator(&self) -> BinaryOp {
     match &self.0.get().inner {
       AstNodeKind::BinaryExpr(op) => *op,
@@ -118,6 +116,12 @@ impl<'a> BinaryExpr<'a> {
   pub fn right_operand(&self) -> Expr<'a> {
     let right = self.0.nth_child(1).unwrap();
     Expr::new(right)
+  }
+}
+
+impl<'a> Spanned for BinaryExpr<'a> {
+  fn span(&self) -> Span {
+    self.0.span()
   }
 }
 
@@ -151,9 +155,11 @@ impl<'a> UnaryExpr<'a> {
     let arg = self.0.nth_child(0).unwrap();
     Expr::new(arg)
   }
+}
 
-  pub fn ast_node_id(&self) -> AstNodeId {
-    self.0.cursor
+impl<'a> Spanned for UnaryExpr<'a> {
+  fn span(&self) -> Span {
+    self.0.span()
   }
 }
 
@@ -175,16 +181,18 @@ impl<'a> Serialize for UnaryExpr<'a> {
 pub struct StringLit<'a>(AstNodePtr<'a>);
 
 impl<'a> StringLit<'a> {
-  pub fn ast_node_id(&self) -> AstNodeId {
-    self.0.cursor
-  }
-
   pub fn value(&self) -> &'static str {
     let node = self.0.get();
     match node.inner {
       AstNodeKind::StrLiteral(_, value) => value,
       _ => unreachable!(),
     }
+  }
+}
+
+impl<'a> Spanned for StringLit<'a> {
+  fn span(&self) -> Span {
+    self.0.span()
   }
 }
 
@@ -203,16 +211,18 @@ impl<'a> Serialize for StringLit<'a> {
 pub struct NumericLit<'a>(AstNodePtr<'a>);
 
 impl<'a> NumericLit<'a> {
-  pub fn ast_node_id(&self) -> AstNodeId {
-    self.0.cursor
-  }
-
   pub fn value(&self) -> f64 {
     let node = self.0.get();
     match node.inner {
       AstNodeKind::NumLiteral(_, value) => value,
       _ => unreachable!(),
     }
+  }
+}
+
+impl<'a> Spanned for NumericLit<'a> {
+  fn span(&self) -> Span {
+    self.0.span()
   }
 }
 
@@ -231,16 +241,18 @@ impl<'a> Serialize for NumericLit<'a> {
 pub struct BoolLit<'a>(AstNodePtr<'a>);
 
 impl<'a> BoolLit<'a> {
-  pub fn ast_node_id(&self) -> AstNodeId {
-    self.0.cursor
-  }
-
   pub fn value(&self) -> bool {
     let node = self.0.get();
     match node.inner {
       AstNodeKind::BoolLiteral(value) => value,
       _ => unreachable!(),
     }
+  }
+}
+
+impl<'a> Spanned for BoolLit<'a> {
+  fn span(&self) -> Span {
+    self.0.span()
   }
 }
 
@@ -258,9 +270,9 @@ impl<'a> Serialize for BoolLit<'a> {
 #[derive(Debug)]
 pub struct NilLit<'a>(AstNodePtr<'a>);
 
-impl<'a> NilLit<'a> {
-  pub fn ast_node_id(&self) -> AstNodeId {
-    self.0.cursor
+impl<'a> Spanned for NilLit<'a> {
+  fn span(&self) -> Span {
+    self.0.span()
   }
 }
 
@@ -291,9 +303,11 @@ impl<'a> TernaryExpr<'a> {
     let ptr = self.0.nth_child(2).unwrap();
     Expr::new(ptr)
   }
+}
 
-  pub fn ast_node_id(&self) -> AstNodeId {
-    self.0.cursor
+impl<'a> Spanned for TernaryExpr<'a> {
+  fn span(&self) -> Span {
+    self.0.span()
   }
 }
 
