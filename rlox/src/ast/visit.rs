@@ -1,9 +1,18 @@
 use super::facades::{
-  BinaryExpr, BoolLit, Expr, NilLit, NumericLit, StringLit, TernaryExpr, UnaryExpr,
+  BinaryExpr, BoolLit, Expr, ExprStmt, NilLit, NumericLit, PrintStmt, Program, Stmt, StringLit,
+  TernaryExpr, UnaryExpr,
 };
 
 pub trait AstVisitor<'a> {
   type Ret;
+
+  fn visit_program(&mut self, program: Program<'a>) -> Self::Ret;
+
+  fn visit_statement(&mut self, stmt: Stmt<'a>) -> Self::Ret;
+
+  fn visit_expression_statement(&mut self, expr_stmt: ExprStmt<'a>) -> Self::Ret;
+
+  fn visit_print_statement(&mut self, print_stmt: PrintStmt<'a>) -> Self::Ret;
 
   fn visit_expression(&mut self, expr: Expr<'a>) -> Self::Ret;
 

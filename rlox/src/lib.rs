@@ -17,7 +17,7 @@ use common::symbol::Interner;
 use miette::{Diagnostic, GraphicalReportHandler, Report, Result};
 
 use crate::{
-  ast::{facades::Expr, visit::AstVisitor},
+  ast::visit::AstVisitor,
   interpreter::Evaluator,
   parser::{parse_source, Parse},
 };
@@ -55,13 +55,12 @@ impl Interpreter {
       Parse::Success(syntax_tree) => {
         let ptr = syntax_tree.root_ptr();
         let program = Program::new(ptr);
-        println!("{}", serde_json::to_string_pretty(&program).unwrap());
-        // let mut evaluator = Evaluator {};
-        // let result = evaluator.visit_expression(expr);
-        // match result {
-        //   Ok(value) => println!("{}", value),
-        //   Err(error) => self.report_error(error, source),
-        // }
+        let mut evaluator = Evaluator {};
+        let result = evaluator.visit_program(program);
+        match result {
+          Ok(value) => println!("{}", value),
+          Err(error) => self.report_error(error, source),
+        }
       }
       Parse::ParseError {
         recovered,

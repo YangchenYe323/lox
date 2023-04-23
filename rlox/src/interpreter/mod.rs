@@ -1,5 +1,8 @@
 use crate::ast::{
-  facades::{BinaryExpr, BoolLit, Expr, NilLit, NumericLit, StringLit, TernaryExpr, UnaryExpr},
+  facades::{
+    BinaryExpr, BoolLit, Expr, ExprStmt, NilLit, NumericLit, PrintStmt, Program, Stmt, StringLit,
+    TernaryExpr, UnaryExpr,
+  },
   visit::AstVisitor,
 };
 
@@ -17,6 +20,32 @@ pub struct Evaluator {}
 
 impl<'a> AstVisitor<'a> for Evaluator {
   type Ret = Result<LoxValueKind, SpannedLoxRuntimeError>;
+
+  fn visit_program(&mut self, program: Program<'a>) -> Self::Ret {
+    let mut value = LoxValueKind::Nil;
+    for stmt in program.stmts() {
+      value = self.visit_statement(stmt)?;
+    }
+    Ok(value)
+  }
+
+  fn visit_statement(&mut self, stmt: Stmt<'a>) -> Self::Ret {
+    match stmt {
+      Stmt::ExprStmt(stmt) => self.visit_expression_statement(stmt),
+      Stmt::PrintStmt(stmt) => self.visit_print_statement(stmt),
+    }
+  }
+
+  fn visit_expression_statement(&mut self, expr_stmt: ExprStmt<'a>) -> Self::Ret {
+    let expr = self.visit_expression(expr_stmt.expr())?;
+    Ok(expr)
+  }
+
+  fn visit_print_statement(&mut self, print_stmt: PrintStmt<'a>) -> Self::Ret {
+    let expr = self.visit_expression(print_stmt.expr())?;
+    println!("{}", expr);
+    Ok(LoxValueKind::Nil)
+  }
 
   fn visit_expression(&mut self, expr: Expr<'a>) -> Self::Ret {
     match expr {
