@@ -3,7 +3,7 @@
 use rustc_hash::FxHashMap;
 use serde::Serialize;
 
-use super::arena::DroplessArena;
+use rlox_arena::DroplessArena;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 pub struct SymbolId(u32);

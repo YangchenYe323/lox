@@ -19,3 +19,5 @@ rustyline = { workspace = true }
 indextree = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+
+rlox_arena = { workspace = true }
