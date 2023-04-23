@@ -10,6 +10,8 @@
 use serde::{ser::SerializeStruct, Serialize};
 use thiserror::Error;
 
+use crate::common::span::{Span, Spanned};
+
 use super::{AstNode, AstNodeId, AstNodeKind, BinaryOp, UnaryOp};
 
 /// A shared reference of an [AstNode], which packs together the arena
@@ -18,6 +20,12 @@ use super::{AstNode, AstNodeId, AstNodeKind, BinaryOp, UnaryOp};
 pub struct AstNodePtr<'a> {
   pub arena: &'a indextree::Arena<AstNode>,
   pub cursor: AstNodeId,
+}
+
+impl<'a> Spanned for AstNodePtr<'a> {
+  fn span(&self) -> Span {
+    self.get().span
+  }
 }
 
 #[derive(Debug, Error)]
@@ -73,19 +81,30 @@ impl<'a> Expr<'a> {
       // _ => unreachable!(),
     }
   }
+
+  pub fn ast_node_id(&self) -> AstNodeId {
+    match self {
+      Expr::Ternary(e) => e.ast_node_id(),
+      Expr::Binary(e) => e.ast_node_id(),
+      Expr::Unary(e) => e.ast_node_id(),
+      Expr::String(e) => e.ast_node_id(),
+      Expr::Number(e) => e.ast_node_id(),
+      Expr::Bool(e) => e.ast_node_id(),
+      Expr::Nil(e) => e.ast_node_id(),
+    }
+  }
 }
 
 #[derive(Debug)]
 pub struct BinaryExpr<'a>(AstNodePtr<'a>);
 
 impl<'a> BinaryExpr<'a> {
-  #[inline(always)]
-  pub fn ast_node(&self) -> &AstNode {
-    self.0.get()
+  pub fn ast_node_id(&self) -> AstNodeId {
+    self.0.cursor
   }
 
   pub fn operator(&self) -> BinaryOp {
-    match &self.ast_node().inner {
+    match &self.0.get().inner {
       AstNodeKind::BinaryExpr(op) => *op,
       _ => unreachable!(),
     }
@@ -132,6 +151,10 @@ impl<'a> UnaryExpr<'a> {
     let arg = self.0.nth_child(0).unwrap();
     Expr::new(arg)
   }
+
+  pub fn ast_node_id(&self) -> AstNodeId {
+    self.0.cursor
+  }
 }
 
 impl<'a> Serialize for UnaryExpr<'a> {
@@ -151,6 +174,20 @@ impl<'a> Serialize for UnaryExpr<'a> {
 #[derive(Debug)]
 pub struct StringLit<'a>(AstNodePtr<'a>);
 
+impl<'a> StringLit<'a> {
+  pub fn ast_node_id(&self) -> AstNodeId {
+    self.0.cursor
+  }
+
+  pub fn value(&self) -> &'static str {
+    let node = self.0.get();
+    match node.inner {
+      AstNodeKind::StrLiteral(_, value) => value,
+      _ => unreachable!(),
+    }
+  }
+}
+
 impl<'a> Serialize for StringLit<'a> {
   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
   where
@@ -164,6 +201,20 @@ impl<'a> Serialize for StringLit<'a> {
 
 #[derive(Debug)]
 pub struct NumericLit<'a>(AstNodePtr<'a>);
+
+impl<'a> NumericLit<'a> {
+  pub fn ast_node_id(&self) -> AstNodeId {
+    self.0.cursor
+  }
+
+  pub fn value(&self) -> f64 {
+    let node = self.0.get();
+    match node.inner {
+      AstNodeKind::NumLiteral(_, value) => value,
+      _ => unreachable!(),
+    }
+  }
+}
 
 impl<'a> Serialize for NumericLit<'a> {
   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -179,6 +230,20 @@ impl<'a> Serialize for NumericLit<'a> {
 #[derive(Debug)]
 pub struct BoolLit<'a>(AstNodePtr<'a>);
 
+impl<'a> BoolLit<'a> {
+  pub fn ast_node_id(&self) -> AstNodeId {
+    self.0.cursor
+  }
+
+  pub fn value(&self) -> bool {
+    let node = self.0.get();
+    match node.inner {
+      AstNodeKind::BoolLiteral(value) => value,
+      _ => unreachable!(),
+    }
+  }
+}
+
 impl<'a> Serialize for BoolLit<'a> {
   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
   where
@@ -192,6 +257,12 @@ impl<'a> Serialize for BoolLit<'a> {
 
 #[derive(Debug)]
 pub struct NilLit<'a>(AstNodePtr<'a>);
+
+impl<'a> NilLit<'a> {
+  pub fn ast_node_id(&self) -> AstNodeId {
+    self.0.cursor
+  }
+}
 
 impl<'a> Serialize for NilLit<'a> {
   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -219,6 +290,10 @@ impl<'a> TernaryExpr<'a> {
   pub fn alternative(&self) -> Expr<'a> {
     let ptr = self.0.nth_child(2).unwrap();
     Expr::new(ptr)
+  }
+
+  pub fn ast_node_id(&self) -> AstNodeId {
+    self.0.cursor
   }
 }
 

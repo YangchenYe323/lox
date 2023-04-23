@@ -1,13 +1,21 @@
-use super::facades::{BinaryExpression, Expression, NumericLiteral, StringLiteral};
+use super::facades::{BinaryExpr, Expr, NumericLit, StringLit, TernaryExpr, UnaryExpr, BoolLit, NilLit};
 
-pub trait Visiter<'a> {
+pub trait AstVisitor<'a> {
   type Ret;
 
-  fn visit_expression(&mut self, expr: Expression<'a>) -> Self::Ret;
+  fn visit_expression(&mut self, expr: Expr<'a>) -> Self::Ret;
 
-  fn visit_binary_expression(&mut self, binary_expr: BinaryExpression<'a>) -> Self::Ret;
+  fn visit_binary_expression(&mut self, binary_expr: BinaryExpr<'a>) -> Self::Ret;
 
-  fn visit_string_literal(&mut self, string_literal: StringLiteral<'a>) -> Self::Ret;
+  fn visit_ternary_expression(&mut self, ternary_expr: TernaryExpr<'a>) -> Self::Ret;
 
-  fn visit_numeric_literal(&mut self, numeric_literal: NumericLiteral<'a>) -> Self::Ret;
+  fn visit_unary_expression(&mut self, unary_expr: UnaryExpr<'a>) -> Self::Ret;
+
+  fn visit_string_literal(&mut self, string_literal: StringLit<'a>) -> Self::Ret;
+
+  fn visit_numeric_literal(&mut self, numeric_literal: NumericLit<'a>) -> Self::Ret;
+
+  fn visit_bool_literal(&mut self, bool_literal: BoolLit<'a>) -> Self::Ret;
+
+  fn visit_nil(&mut self, nil: NilLit<'a>) -> Self::Ret;
 }

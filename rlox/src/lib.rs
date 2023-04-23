@@ -13,6 +13,7 @@
 
 mod ast;
 mod common;
+mod interpreter;
 mod lexer;
 mod parser;
 
@@ -22,7 +23,8 @@ use common::symbol::Interner;
 use miette::{Diagnostic, GraphicalReportHandler, Report, Result};
 
 use crate::{
-  ast::facades::Expr,
+  ast::{facades::Expr, visit::AstVisitor},
+  interpreter::Evaluator,
   parser::{parse_source, Parse},
 };
 
@@ -61,7 +63,9 @@ impl Interpreter {
       Parse::Success(syntax_tree) => {
         let ptr = syntax_tree.root_ptr();
         let expr = Expr::new(ptr);
-        println!("{}", serde_json::to_string_pretty(&expr).unwrap());
+        let mut evaluator = Evaluator {};
+        let result = evaluator.visit_expression(expr);
+        println!("{:?}", result);
       }
       Parse::ParseError {
         recovered,

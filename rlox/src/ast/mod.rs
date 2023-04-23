@@ -7,6 +7,7 @@
 //! optimization.
 
 pub mod facades;
+pub mod visit;
 
 use std::ops::Deref;
 

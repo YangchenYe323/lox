@@ -20,3 +20,7 @@ impl From<Span> for SourceSpan {
     )
   }
 }
+
+pub trait Spanned {
+  fn span(&self) -> Span;
+}
