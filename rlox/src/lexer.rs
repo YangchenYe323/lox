@@ -126,7 +126,7 @@ impl<'a> Lexer<'a> {
       }
       '"' => {
         // start_pos points at the first character after the leading "
-        let start_pos = self.char_reader.next_pos();
+        let start_pos = self.char_reader.current_pos();
         // Pass the leading "
         self.advance();
 
@@ -139,7 +139,7 @@ impl<'a> Lexer<'a> {
 
         // end_pos points at the first character after the trailing " or the length of the source text
         // if end is reache
-        let end_pos = self.char_reader.current_pos();
+        let end_pos = self.char_reader.next_pos();
         if self.at_end() {
           self.errors.push(LexerError::UnterminatedString(Span::new(
             start_pos, end_pos,

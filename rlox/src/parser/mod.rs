@@ -170,6 +170,11 @@ impl Parser {
       TokenKind::Str(symbol) => {
         self.advance();
         let value = INTERNER.with_borrow(|interner| interner.get(symbol));
+        let value = value
+          .strip_prefix("\"")
+          .unwrap()
+          .strip_suffix("\"")
+          .unwrap();
         Ok(self.builder.string_literal(span, symbol, value))
       }
       TokenKind::True => {
