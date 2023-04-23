@@ -6,7 +6,7 @@ use crate::{
   INTERNER,
 };
 
-use self::diagnostics::ParserError;
+use self::diagnostics::{unexpected_token, ParserError};
 
 type ParserResult<T, E = ParserError> = std::result::Result<T, E>;
 
@@ -76,7 +76,7 @@ impl Parser {
       self.advance();
       let consequence = self.ternary()?;
       if !self.advance_if_match(TokenKind::Colon) {
-        return Self::unexpected_token(self.cur_token());
+        return Err(unexpected_token(self.cur_token()));
       }
       let alternative = self.ternary()?;
       Ok(
@@ -188,11 +188,11 @@ impl Parser {
         self.advance();
         let expr = self.expression()?;
         if !self.advance_if_match(TokenKind::RParen) {
-          return Self::unexpected_token(self.cur_token());
+          return Err(unexpected_token(self.cur_token()));
         }
         Ok(expr)
       }
-      _ => Self::unexpected_token(self.cur_token()),
+      _ => Err(unexpected_token(self.cur_token())),
     }
   }
 
@@ -215,13 +215,6 @@ impl Parser {
     } else {
       false
     }
-  }
-
-  fn unexpected_token<T>(token: &Token) -> ParserResult<T> {
-    Err(ParserError::UnexpectedToken(
-      token.span,
-      token.kind.to_str(),
-    ))
   }
 }
 
