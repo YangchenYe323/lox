@@ -49,8 +49,11 @@ impl<'a> Lexer<'a> {
   /// Perform a complete pass over the source code and generate all
   /// the tokens and errors along the way
   pub fn scan_tokens(&mut self) {
-    while !self.at_end() {
+    loop {
       self.scan_token();
+      if self.at_end() {
+        break;
+      }
     }
   }
 

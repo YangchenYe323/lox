@@ -48,6 +48,12 @@ pub struct AstNode {
 
 #[derive(Debug)]
 pub enum AstNodeKind {
+  // Program
+  Program,
+  // Statements
+  ExprStmt,
+  PrintStmt,
+  // Expressions
   TernaryExpr,
   BinaryExpr(BinaryOp),
   UnaryExpr(UnaryOp),
@@ -187,7 +193,52 @@ impl SyntaxTreeBuilder {
     ternary
   }
 
-  fn get_span(&self, id: AstNodeId) -> Span {
+  pub fn expression_statement(&mut self, span: Span, expr: AstNodeId) -> AstNodeId {
+    let inner = AstNode {
+      span,
+      inner: AstNodeKind::ExprStmt,
+    };
+    let stmt = AstNodeId::from(self.arena.new_node(inner));
+    stmt.append(indextree::NodeId::from(expr), &mut self.arena);
+
+    stmt
+  }
+
+  pub fn print_statement(&mut self, span: Span, expr: AstNodeId) -> AstNodeId {
+    let inner = AstNode {
+      span,
+      inner: AstNodeKind::PrintStmt,
+    };
+    let stmt = AstNodeId::from(self.arena.new_node(inner));
+    stmt.append(indextree::NodeId::from(expr), &mut self.arena);
+
+    stmt
+  }
+
+  pub fn start_program(&mut self, start: u32) -> ProgramBuilder {
+    let inner = AstNode {
+      span: Span::new(start, u32::MAX),
+      inner: AstNodeKind::Program,
+    };
+    ProgramBuilder(AstNodeId::from(self.arena.new_node(inner)))
+  }
+
+  pub fn add_statement(&mut self, builder: &ProgramBuilder, stmt: AstNodeId) {
+    builder
+      .0
+      .append(indextree::NodeId::from(stmt), &mut self.arena);
+  }
+
+  pub fn finish_program(&mut self, builder: ProgramBuilder, end: u32) -> AstNodeId {
+    let node = &mut self.arena[*builder.0];
+    node.get_mut().span.end = end;
+    builder.0
+  }
+
+  pub fn get_span(&self, id: AstNodeId) -> Span {
     self.arena[indextree::NodeId::from(id)].get().span
   }
 }
+
+#[derive(Debug)]
+pub struct ProgramBuilder(AstNodeId);

@@ -2,6 +2,7 @@ mod diagnostics;
 
 use crate::{
   ast::{AstNodeId, BinaryOp, SyntaxTree, SyntaxTreeBuilder, UnaryOp},
+  common::span::Span,
   lexer::{lex_source, Lex, LexerError, Token, TokenKind},
   INTERNER,
 };
@@ -24,7 +25,7 @@ pub fn parse_source(source: &str) -> Parse {
   match lex_result {
     Lex::Success(tokens) => {
       let mut parser = Parser::new(tokens);
-      match parser.expression() {
+      match parser.program() {
         Ok(expr) => match parser.recovered_errors.is_empty() {
           true => {
             let tree = parser.builder.finish(expr);
@@ -60,6 +61,52 @@ impl Parser {
       current_idx: 0,
       recovered_errors: vec![],
     }
+  }
+
+  pub fn program(&mut self) -> ParserResult<AstNodeId> {
+    let start = self.cur_span_start();
+    let program_builder = self.builder.start_program(start);
+    while self.cur_token().kind != TokenKind::Eof {
+      let stmt = self.stmt()?;
+      self.builder.add_statement(&program_builder, stmt);
+    }
+    let end = self.cur_token().span.end;
+    Ok(self.builder.finish_program(program_builder, end))
+  }
+
+  pub fn stmt(&mut self) -> ParserResult<AstNodeId> {
+    match self.cur_token().kind {
+      TokenKind::Print => self.print_stmt(),
+      _ => self.expr_stmt(),
+    }
+  }
+
+  /// exprStmt → expression ";" ;
+  pub fn expr_stmt(&mut self) -> ParserResult<AstNodeId> {
+    let start = self.cur_span_start();
+    let expr = self.expression()?;
+
+    self.automatic_semicolon_insertion()?;
+
+    let end = self.prev_token().span.end;
+    Ok(
+      self
+        .builder
+        .expression_statement(Span::new(start, end), expr),
+    )
+  }
+
+  /// printStmt → print expression ";" ;
+  pub fn print_stmt(&mut self) -> ParserResult<AstNodeId> {
+    let start = self.cur_span_start();
+    // Advance over print
+    self.advance();
+    let expr = self.expression()?;
+
+    self.automatic_semicolon_insertion()?;
+
+    let end = self.prev_token().span.end;
+    Ok(self.builder.print_statement(Span::new(start, end), expr))
   }
 
   /// expression → ternary
@@ -167,11 +214,7 @@ impl Parser {
       TokenKind::Str(symbol) => {
         self.advance();
         let value = INTERNER.with_borrow(|interner| interner.get(symbol));
-        let value = value
-          .strip_prefix('"')
-          .unwrap()
-          .strip_suffix('"')
-          .unwrap();
+        let value = value.strip_prefix('"').unwrap().strip_suffix('"').unwrap();
         Ok(self.builder.string_literal(span, symbol, value))
       }
       TokenKind::True => {
@@ -202,6 +245,10 @@ impl Parser {
     &self.tokens[self.current_idx]
   }
 
+  pub fn prev_token(&self) -> &Token {
+    &self.tokens[self.current_idx - 1]
+  }
+
   pub fn cur_span_start(&self) -> u32 {
     self.cur_token().span.start
   }
@@ -217,6 +264,27 @@ impl Parser {
     } else {
       false
     }
+  }
+
+  /// Performs automatic semicolon insertion at statement boundary
+  fn automatic_semicolon_insertion(&mut self) -> ParserResult<()> {
+    // already a semicolon, good.
+    if self.advance_if_match(TokenKind::Semicolon) {
+      return Ok(());
+    }
+    // reached the end
+    if matches!(self.cur_token().kind, TokenKind::Eof) {
+      return Ok(());
+    }
+    // Current token is in another line
+    if self.cur_token().line > self.prev_token().line {
+      return Ok(());
+    }
+
+    Err(ParserError::UnexpectedToken(
+      self.cur_token().span,
+      self.cur_token().kind.to_str(),
+    ))
   }
 }
 

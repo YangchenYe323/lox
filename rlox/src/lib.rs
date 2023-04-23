@@ -12,6 +12,7 @@ mod parser;
 
 use std::cell::RefCell;
 
+use ast::facades::Program;
 use common::symbol::Interner;
 use miette::{Diagnostic, GraphicalReportHandler, Report, Result};
 
@@ -53,13 +54,14 @@ impl Interpreter {
     match parse_result {
       Parse::Success(syntax_tree) => {
         let ptr = syntax_tree.root_ptr();
-        let expr = Expr::new(ptr);
-        let mut evaluator = Evaluator {};
-        let result = evaluator.visit_expression(expr);
-        match result {
-          Ok(value) => println!("{}", value),
-          Err(error) => self.report_error(error, source),
-        }
+        let program = Program::new(ptr);
+        println!("{}", serde_json::to_string_pretty(&program).unwrap());
+        // let mut evaluator = Evaluator {};
+        // let result = evaluator.visit_expression(expr);
+        // match result {
+        //   Ok(value) => println!("{}", value),
+        //   Err(error) => self.report_error(error, source),
+        // }
       }
       Parse::ParseError {
         recovered,
