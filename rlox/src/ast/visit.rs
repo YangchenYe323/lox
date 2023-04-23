@@ -1,4 +1,6 @@
-use super::facades::{BinaryExpr, Expr, NumericLit, StringLit, TernaryExpr, UnaryExpr, BoolLit, NilLit};
+use super::facades::{
+  BinaryExpr, BoolLit, Expr, NilLit, NumericLit, StringLit, TernaryExpr, UnaryExpr,
+};
 
 pub trait AstVisitor<'a> {
   type Ret;

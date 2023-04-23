@@ -145,14 +145,11 @@ impl Parser {
   pub fn unary(&mut self) -> ParserResult<AstNodeId> {
     match self.cur_token().kind {
       TokenKind::Bang | TokenKind::Minus => {
+        let start = self.cur_span_start();
         let op = token_to_unary_op(self.cur_token());
         self.advance();
         let arg = self.unary()?;
-        Ok(
-          self
-            .builder
-            .unary_expression(self.cur_span_start(), op, arg),
-        )
+        Ok(self.builder.unary_expression(start, op, arg))
       }
       _ => self.primary(),
     }
