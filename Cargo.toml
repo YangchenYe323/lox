@@ -1,5 +1,5 @@
 [workspace]
-members = ["rlox", "rlox_arena"]
+members = ["rlox", "rlox_arena", "rlox_span"]
 
 [workspace.package]
 authors = ["Yangchen <eikasia30@gmail.com>"]
@@ -21,3 +21,4 @@ serde_json = "1.0.96"
 
 rlox = { version = "0.1.0", path = "rlox" }
 rlox_arena = { version = "0.1.0", path = "rlox_arena" }
+rlox_span = { version = "0.1.0", path = "rlox_span" }

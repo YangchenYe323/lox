@@ -1,7 +1,7 @@
 use miette::Diagnostic;
 use thiserror::Error;
 
-use crate::common::span::Span;
+use rlox_span::Span;
 
 #[derive(Debug, Error, Diagnostic)]
 #[error("Unexpected character {0} on line {1}")]

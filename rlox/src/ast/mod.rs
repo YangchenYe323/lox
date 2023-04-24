@@ -13,9 +13,9 @@ use std::ops::Deref;
 
 use serde::Serialize;
 
-use crate::common::{span::Span, symbol::SymbolId};
-
 use self::facades::AstNodePtr;
+
+use rlox_span::{Span, SymbolId};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct AstNodeId(indextree::NodeId);

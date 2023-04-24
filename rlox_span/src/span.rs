@@ -1,5 +1,6 @@
 use miette::{SourceOffset, SourceSpan};
 
+/// [Span] represents a range in the soruce code.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Span {
   pub start: u32,
@@ -21,6 +22,8 @@ impl From<Span> for SourceSpan {
   }
 }
 
+/// The [Spanned] trait describes any data structure that represents a span
+/// in the source code
 pub trait Spanned {
   fn span(&self) -> Span;
 }

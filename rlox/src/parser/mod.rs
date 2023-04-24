@@ -2,10 +2,11 @@ mod diagnostics;
 
 use crate::{
   ast::{AstNodeId, BinaryOp, SyntaxTree, SyntaxTreeBuilder, UnaryOp},
-  common::span::Span,
   lexer::{lex_source, Lex, LexerError, Token, TokenKind},
   INTERNER,
 };
+
+use rlox_span::Span;
 
 use self::diagnostics::{unexpected_token, ParserError};
 

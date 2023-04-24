@@ -3,15 +3,11 @@ use serde::{
   Serialize,
 };
 
-use crate::{
-  ast::{AstNodeKind, BinaryOp, UnaryOp},
-  common::{
-    span::{Span, Spanned},
-    symbol::SymbolId,
-  },
-};
+use crate::ast::{AstNodeKind, BinaryOp, UnaryOp};
 
 use super::AstNodePtr;
+
+use rlox_span::{Span, Spanned, SymbolId};
 
 #[derive(Debug, Serialize, Clone, Copy)]
 pub enum Expr<'a> {

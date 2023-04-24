@@ -2,7 +2,7 @@ use std::num::NonZeroUsize;
 
 use rustc_hash::FxHashMap;
 
-use crate::common::symbol::SymbolId;
+use rlox_span::SymbolId;
 
 use super::types::LoxValueKind;
 use super::types::ObjectId;

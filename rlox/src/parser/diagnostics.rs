@@ -1,7 +1,9 @@
 use miette::Diagnostic;
 use thiserror::Error;
 
-use crate::{common::span::Span, lexer::Token};
+use crate::lexer::Token;
+
+use rlox_span::Span;
 
 #[derive(Debug, Error, Diagnostic)]
 pub enum ParserError {

@@ -11,7 +11,7 @@ mod expr;
 mod program;
 mod stmt;
 
-use crate::common::span::{Span, Spanned};
+use rlox_span::{Span, Spanned};
 
 use super::{AstNode, AstNodeId};
 

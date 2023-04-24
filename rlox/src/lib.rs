@@ -5,7 +5,6 @@
 //! This crate implements a tree-walking interpreter in rust from [crafting-interpreters](https://craftinginterpreters.com/)
 
 mod ast;
-mod common;
 mod interpreter;
 mod lexer;
 mod parser;
@@ -13,8 +12,8 @@ mod parser;
 use std::cell::RefCell;
 
 use ast::facades::Program;
-use common::symbol::Interner;
 use miette::{Diagnostic, GraphicalReportHandler, Report, Result};
+use rlox_span::Interner;
 
 use crate::{
   ast::visit::AstVisitor,

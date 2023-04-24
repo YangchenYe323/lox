@@ -1,7 +1,7 @@
 use miette::Diagnostic;
 use thiserror::Error;
 
-use crate::common::span::{Span, Spanned};
+use rlox_span::{Span, Spanned};
 
 #[derive(Debug, Error, Diagnostic)]
 pub enum LoxRuntimeError {

@@ -1,8 +1,10 @@
 use serde::{ser::SerializeStruct, Serialize};
 
-use crate::{ast::AstNodeKind, common::symbol::SymbolId};
+use crate::ast::AstNodeKind;
 
 use super::{AstNodePtr, Expr};
+
+use rlox_span::SymbolId;
 
 #[derive(Debug, Serialize)]
 pub enum Stmt<'a> {
