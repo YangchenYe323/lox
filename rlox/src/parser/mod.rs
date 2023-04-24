@@ -11,6 +11,7 @@ use self::diagnostics::{unexpected_token, ParserError};
 
 type ParserResult<T, E = ParserError> = std::result::Result<T, E>;
 
+#[derive(Debug)]
 pub enum Parse {
   Success(SyntaxTree),
   ParseError {

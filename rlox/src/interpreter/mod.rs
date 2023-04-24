@@ -1,5 +1,3 @@
-use rustc_hash::FxHashMap;
-
 use crate::{
   ast::{
     facades::{
@@ -8,30 +6,31 @@ use crate::{
     },
     visit::AstVisitor,
   },
-  common::symbol::SymbolId,
   INTERNER,
 };
 
 use self::{
   diagnostics::{LoxRuntimeError, SpannedLoxRuntimeError, SpannedLoxRuntimeErrorWrapper},
   eval::{BinaryEval, UnaryEval},
+  runtime::Environment,
   types::LoxValueKind,
 };
 
 mod diagnostics;
 mod eval;
+mod runtime;
 mod types;
 
 #[derive(Debug, Default)]
 pub struct Evaluator {
-  global_variables: FxHashMap<SymbolId, LoxValueKind>,
+  environment: Environment,
 }
 
 impl<'a> AstVisitor<'a> for Evaluator {
   type Ret = Result<LoxValueKind, SpannedLoxRuntimeError>;
 
   fn visit_program(&mut self, program: Program<'a>) -> Self::Ret {
-    let mut value = LoxValueKind::Nil;
+    let mut value = LoxValueKind::nil();
     for stmt in program.stmts() {
       value = self.visit_statement(stmt)?;
     }
@@ -51,10 +50,10 @@ impl<'a> AstVisitor<'a> for Evaluator {
     let init = if let Some(expr) = var_decl.init_expr() {
       self.visit_expression(expr)?
     } else {
-      LoxValueKind::Nil
+      LoxValueKind::nil()
     };
-    self.global_variables.insert(symbol, init);
-    Ok(LoxValueKind::Nil)
+    self.environment.define(symbol, init);
+    Ok(LoxValueKind::nil())
   }
 
   fn visit_expression_statement(&mut self, expr_stmt: ExprStmt<'a>) -> Self::Ret {
@@ -65,7 +64,7 @@ impl<'a> AstVisitor<'a> for Evaluator {
   fn visit_print_statement(&mut self, print_stmt: PrintStmt<'a>) -> Self::Ret {
     let expr = self.visit_expression(print_stmt.expr())?;
     println!("{}", expr);
-    Ok(LoxValueKind::Nil)
+    Ok(LoxValueKind::nil())
   }
 
   fn visit_expression(&mut self, expr: Expr<'a>) -> Self::Ret {
@@ -117,18 +116,14 @@ impl<'a> AstVisitor<'a> for Evaluator {
 
   fn visit_var_reference(&mut self, var_reference: Var<'a>) -> Self::Ret {
     let reference = var_reference.var_symbol();
-    self
-      .global_variables
-      .get(&reference)
-      .cloned()
-      .ok_or_else(|| {
-        let name = INTERNER.with_borrow(|interner| interner.get(reference));
-        let err = LoxRuntimeError::UnresolvedReference(name);
-        var_reference.wrap(err)
-      })
+    self.environment.get_rvalue(reference).ok_or_else(|| {
+      let name = INTERNER.with_borrow(|interner| interner.get(reference));
+      let err = LoxRuntimeError::UnresolvedReference(name);
+      var_reference.wrap(err)
+    })
   }
 
   fn visit_nil(&mut self, _nil: NilLit<'a>) -> Self::Ret {
-    Ok(LoxValueKind::Nil)
+    Ok(LoxValueKind::nil())
   }
 }

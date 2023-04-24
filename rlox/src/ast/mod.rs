@@ -86,6 +86,7 @@ pub enum UnaryOp {
   Neg,
 }
 
+#[derive(Debug)]
 pub struct SyntaxTree {
   arena: indextree::Arena<AstNode>,
   root: AstNodeId,
