@@ -11,6 +11,7 @@ use rlox_span::{Span, Spanned, SymbolId};
 
 #[derive(Debug, Serialize, Clone, Copy)]
 pub enum Expr<'a> {
+  Assign(AssignExpr<'a>),
   Ternary(TernaryExpr<'a>),
   Binary(BinaryExpr<'a>),
   Unary(UnaryExpr<'a>),
@@ -32,6 +33,7 @@ impl<'a> Spanned for Expr<'a> {
       Expr::Bool(e) => e.span(),
       Expr::Nil(e) => e.span(),
       Expr::Var(e) => e.span(),
+      Expr::Assign(e) => e.span(),
     }
   }
 }
@@ -41,6 +43,7 @@ impl<'a> Expr<'a> {
     use self::Expr::*;
     match ptr.get().inner {
       AstNodeKind::TernaryExpr => Ternary(TernaryExpr(ptr)),
+      AstNodeKind::Assign => Assign(AssignExpr(ptr)),
       AstNodeKind::BinaryExpr(_) => Binary(BinaryExpr(ptr)),
       AstNodeKind::StrLiteral(_, _) => String(StringLit(ptr)),
       AstNodeKind::NumLiteral(_, _) => Number(NumericLit(ptr)),
@@ -312,5 +315,54 @@ impl<'a> Serialize for Var<'a> {
 impl<'a> Spanned for Var<'a> {
   fn span(&self) -> Span {
     self.0.span()
+  }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct AssignExpr<'a>(AstNodePtr<'a>);
+
+impl<'a> AssignExpr<'a> {
+  pub fn target(&self) -> AssignTarget<'a> {
+    let ptr = self.0.nth_child(0).unwrap();
+    AssignTarget::new(ptr)
+  }
+
+  pub fn value(&self) -> Expr<'a> {
+    let ptr = self.0.nth_child(1).unwrap();
+    Expr::new(ptr)
+  }
+}
+
+impl<'a> Serialize for AssignExpr<'a> {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: serde::Serializer,
+  {
+    let target = self.target();
+    let value = self.value();
+    let mut state = serializer.serialize_struct("AssignExpr", 2)?;
+    state.serialize_field("target", &target)?;
+    state.serialize_field("value", &value)?;
+    state.end()
+  }
+}
+
+impl<'a> Spanned for AssignExpr<'a> {
+  fn span(&self) -> Span {
+    self.0.span()
+  }
+}
+
+#[derive(Debug, Clone, Copy, Serialize)]
+pub enum AssignTarget<'a> {
+  Ident(Var<'a>),
+}
+
+impl<'a> AssignTarget<'a> {
+  pub fn new(ptr: AstNodePtr<'a>) -> Self {
+    match &ptr.get().inner {
+      AstNodeKind::Var(_) => Self::Ident(Var(ptr)),
+      _ => unreachable!(),
+    }
   }
 }

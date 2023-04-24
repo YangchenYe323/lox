@@ -9,6 +9,8 @@ use rlox_span::Span;
 pub enum ParserError {
   #[error("Unexpected Token {1}")]
   UnexpectedToken(#[label] Span, /*token name */ &'static str),
+  #[error("Invalid assignment target")]
+  InvalidAssignment(#[label] Span),
 }
 
 pub fn unexpected_token(token: &Token) -> ParserError {

@@ -57,6 +57,7 @@ pub enum AstNodeKind {
   PrintStmt,
   // Expressions
   TernaryExpr,
+  Assign,
   BinaryExpr(BinaryOp),
   UnaryExpr(UnaryOp),
   StrLiteral(SymbolId, &'static str),
@@ -264,8 +265,33 @@ impl SyntaxTreeBuilder {
     AstNodeId::from(self.arena.new_node(inner))
   }
 
+  pub fn assignment_expression(
+    &mut self,
+    span: Span,
+    target: AstNodeId,
+    value: AstNodeId,
+  ) -> AstNodeId {
+    let inner = AstNode {
+      span,
+      inner: AstNodeKind::Assign,
+    };
+    let assign = AstNodeId::from(self.arena.new_node(inner));
+    assign.append(indextree::NodeId::from(target), &mut self.arena);
+    assign.append(indextree::NodeId::from(value), &mut self.arena);
+    assign
+  }
+
   pub fn get_span(&self, id: AstNodeId) -> Span {
     self.arena[indextree::NodeId::from(id)].get().span
+  }
+
+  #[allow(clippy::match_like_matches_macro)]
+  pub fn valid_assign_target(&self, node: AstNodeId) -> bool {
+    let node = &self.arena[indextree::NodeId::from(node)];
+    match &node.get().inner {
+      AstNodeKind::Var(_) => true,
+      _ => false,
+    }
   }
 }
 

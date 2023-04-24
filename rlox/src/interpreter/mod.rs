@@ -1,12 +1,9 @@
-use crate::{
-  ast::{
-    facades::{
-      BinaryExpr, BoolLit, Expr, ExprStmt, NilLit, NumericLit, PrintStmt, Program, Stmt, StringLit,
-      TernaryExpr, UnaryExpr, Var, VarDecl,
-    },
-    visit::AstVisitor,
+use crate::ast::{
+  facades::{
+    AssignExpr, BinaryExpr, BoolLit, Expr, ExprStmt, NilLit, NumericLit, PrintStmt, Program, Stmt,
+    StringLit, TernaryExpr, UnaryExpr, Var, VarDecl,
   },
-  INTERNER,
+  visit::AstVisitor,
 };
 
 use self::{
@@ -69,6 +66,7 @@ impl<'a> AstVisitor<'a> for Evaluator {
 
   fn visit_expression(&mut self, expr: Expr<'a>) -> Self::Ret {
     match expr {
+      Expr::Assign(e) => self.visit_assignment_expression(e),
       Expr::Ternary(e) => self.visit_ternary_expression(e),
       Expr::Binary(e) => self.visit_binary_expression(e),
       Expr::Unary(e) => self.visit_unary_expression(e),
@@ -78,6 +76,18 @@ impl<'a> AstVisitor<'a> for Evaluator {
       Expr::Var(e) => self.visit_var_reference(e),
       Expr::Nil(e) => self.visit_nil(e),
     }
+  }
+
+  fn visit_assignment_expression(&mut self, expr: AssignExpr<'a>) -> Self::Ret {
+    let target = expr.target();
+    let value = expr.value();
+    let target = self
+      .environment
+      .get_lvalue(target)
+      .ok_or_else(|| expr.wrap(LoxRuntimeError::UnresolvedReference))?;
+    let value = self.visit_expression(value)?;
+    self.environment.assign(target, value.clone());
+    Ok(value)
   }
 
   fn visit_binary_expression(&mut self, binary_expr: BinaryExpr<'a>) -> Self::Ret {
@@ -116,11 +126,10 @@ impl<'a> AstVisitor<'a> for Evaluator {
 
   fn visit_var_reference(&mut self, var_reference: Var<'a>) -> Self::Ret {
     let reference = var_reference.var_symbol();
-    self.environment.get_rvalue(reference).ok_or_else(|| {
-      let name = INTERNER.with_borrow(|interner| interner.get(reference));
-      let err = LoxRuntimeError::UnresolvedReference(name);
-      var_reference.wrap(err)
-    })
+    self
+      .environment
+      .get_rvalue(reference)
+      .ok_or_else(|| var_reference.wrap(LoxRuntimeError::UnresolvedReference))
   }
 
   fn visit_nil(&mut self, _nil: NilLit<'a>) -> Self::Ret {

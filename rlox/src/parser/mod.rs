@@ -147,9 +147,36 @@ impl Parser {
     Ok(self.builder.print_statement(Span::new(start, end), expr))
   }
 
-  /// expression → ternary
+  /// expression → assignment
   pub fn expression(&mut self) -> ParserResult<AstNodeId> {
-    self.ternary()
+    self.assignment()
+  }
+
+  /// assignment → ASSIGN_TARGET "=" assignment
+  ///             | ternary
+  pub fn assignment(&mut self) -> ParserResult<AstNodeId> {
+    let start = self.cur_span_start();
+    let base = self.ternary()?;
+    if matches!(self.cur_token().kind, TokenKind::Eq) {
+      self.advance();
+      let value = self.assignment()?;
+
+      // Invalid Assignment is a recoverrable error
+      if !self.builder.valid_assign_target(base) {
+        self
+          .recovered_errors
+          .push(ParserError::InvalidAssignment(self.builder.get_span(base)));
+      }
+
+      let end = self.prev_token().span.end;
+      Ok(
+        self
+          .builder
+          .assignment_expression(Span::new(start, end), base, value),
+      )
+    } else {
+      Ok(base)
+    }
   }
 
   /// ternary → equality ;

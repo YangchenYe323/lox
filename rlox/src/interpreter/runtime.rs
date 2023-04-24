@@ -4,6 +4,8 @@ use rustc_hash::FxHashMap;
 
 use rlox_span::SymbolId;
 
+use crate::ast::facades::AssignTarget;
+
 use super::types::LoxValueKind;
 use super::types::ObjectId;
 
@@ -34,10 +36,13 @@ impl Environment {
   }
 
   pub fn define(&mut self, symbol: SymbolId, value: LoxValueKind) {
-    let id = ObjectId::Id(unsafe { NonZeroUsize::new_unchecked(self.next_addr) });
-    self.next_addr += 1;
+    let id = self.new_object();
     self.symbols.insert(symbol, id);
     self.memory.insert(id, value);
+  }
+
+  pub fn assign(&mut self, object: ObjectId, value: LoxValueKind) {
+    self.memory.insert(object, value);
   }
 
   pub fn get_rvalue(&mut self, symbol: SymbolId) -> Option<LoxValueKind> {
@@ -46,5 +51,25 @@ impl Environment {
       .get(&symbol)
       .and_then(|id| self.memory.get(id))
       .cloned()
+  }
+
+  pub fn get_lvalue(&mut self, target: AssignTarget<'_>) -> Option<ObjectId> {
+    match target {
+      AssignTarget::Ident(var) => {
+        // The l-value asscoiated with identifier is always a NEW objectid
+        let symbol = var.var_symbol();
+        self.symbols.contains_key(&symbol).then(|| {
+          let id = self.new_object();
+          self.symbols.insert(symbol, id);
+          id
+        })
+      }
+    }
+  }
+
+  fn new_object(&mut self) -> ObjectId {
+    let id = ObjectId::Id(unsafe { NonZeroUsize::new_unchecked(self.next_addr) });
+    self.next_addr += 1;
+    id
   }
 }
