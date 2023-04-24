@@ -1,9 +1,11 @@
+use rlox_span::{Span, Spanned};
 use serde::{ser::SerializeSeq, Serialize};
 
 use crate::ast::AstNodeKind;
 
 use super::{stmt::Stmt, AstNodePtr};
 
+#[derive(Debug, Clone, Copy)]
 pub struct Program<'a>(AstNodePtr<'a>);
 
 impl<'a> Program<'a> {
@@ -30,5 +32,11 @@ impl<'a> Serialize for Program<'a> {
       seq.serialize_element(&stmt)?;
     }
     seq.end()
+  }
+}
+
+impl<'a> Spanned for Program<'a> {
+  fn span(&self) -> Span {
+    self.0.span()
   }
 }
