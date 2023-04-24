@@ -67,11 +67,47 @@ impl Parser {
     let start = self.cur_span_start();
     let program_builder = self.builder.start_program(start);
     while self.cur_token().kind != TokenKind::Eof {
-      let stmt = self.stmt()?;
+      let stmt = self.decl()?;
       self.builder.add_statement(&program_builder, stmt);
     }
     let end = self.cur_token().span.end;
     Ok(self.builder.finish_program(program_builder, end))
+  }
+
+  /// declaration → varDecl
+  ///             | statement ;
+  pub fn decl(&mut self) -> ParserResult<AstNodeId> {
+    match self.cur_token().kind {
+      TokenKind::Var => self.var_decl(),
+      _ => self.stmt(),
+    }
+  }
+
+  /// varDecl → "var" IDENTIFIER ( "=" expression )? ";" ;
+  pub fn var_decl(&mut self) -> ParserResult<AstNodeId> {
+    let start = self.cur_span_start();
+    // Advance var
+    self.advance();
+    let identifier = match self.cur_token().kind {
+      TokenKind::Ident(symbol) => symbol,
+      _ => return Err(unexpected_token(self.cur_token())),
+    };
+    self.advance();
+
+    let init = if self.advance_if_match(TokenKind::Eq) {
+      Some(self.expression()?)
+    } else {
+      None
+    };
+
+    self.automatic_semicolon_insertion()?;
+    let end = self.prev_token().span.end;
+
+    Ok(
+      self
+        .builder
+        .variable_declaration(Span::new(start, end), identifier, init),
+    )
   }
 
   pub fn stmt(&mut self) -> ParserResult<AstNodeId> {
@@ -236,6 +272,10 @@ impl Parser {
           return Err(unexpected_token(self.cur_token()));
         }
         Ok(expr)
+      }
+      TokenKind::Ident(symbol) => {
+        self.advance();
+        Ok(self.builder.variable_reference(span, symbol))
       }
       _ => Err(unexpected_token(self.cur_token())),
     }

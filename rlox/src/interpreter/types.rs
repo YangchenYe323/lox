@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum LoxValueKind {
   Number(f64),
   String(String),

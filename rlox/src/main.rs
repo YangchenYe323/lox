@@ -16,7 +16,7 @@ pub struct Args {
 
 fn main() -> Result<()> {
   let Args { file } = Args::parse();
-  let mut interpreter = Interpreter::new();
+  let mut interpreter = Interpreter::default();
   match file {
     Some(file) => run_file(file, &mut interpreter),
     None => run_interactive(&mut interpreter),

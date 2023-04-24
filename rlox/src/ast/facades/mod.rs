@@ -11,17 +11,15 @@ mod expr;
 mod program;
 mod stmt;
 
-use thiserror::Error;
-
 use crate::common::span::{Span, Spanned};
 
 use super::{AstNode, AstNodeId};
 
 pub use self::expr::{
-  BinaryExpr, BoolLit, Expr, NilLit, NumericLit, StringLit, TernaryExpr, UnaryExpr,
+  BinaryExpr, BoolLit, Expr, NilLit, NumericLit, StringLit, TernaryExpr, UnaryExpr, Var,
 };
 pub use self::program::Program;
-pub use self::stmt::{ExprStmt, PrintStmt, Stmt};
+pub use self::stmt::{ExprStmt, PrintStmt, Stmt, VarDecl};
 
 /// A shared reference of an [AstNode], which packs together the arena
 /// and the id.
@@ -37,10 +35,6 @@ impl<'a> Spanned for AstNodePtr<'a> {
   }
 }
 
-#[derive(Debug, Error)]
-#[error("No such child at index {0}")]
-pub struct NoSuchChildError(usize);
-
 impl<'a> AstNodePtr<'a> {
   pub fn new(arena: &'a indextree::Arena<AstNode>, cursor: AstNodeId) -> Self {
     Self { arena, cursor }
@@ -51,17 +45,10 @@ impl<'a> AstNodePtr<'a> {
   }
 
   /// Nth child of the current node, 0-indexed
-  pub fn nth_child(&self, n: usize) -> std::result::Result<AstNodePtr<'a>, NoSuchChildError> {
-    let mut it = self.cursor.children(self.arena);
-    for i in 0..n {
-      if it.next().is_none() {
-        return Err(NoSuchChildError(i + 1));
-      }
-    }
-    match it.next() {
-      Some(id) => Ok(Self::new(self.arena, AstNodeId::from(id))),
-      None => Err(NoSuchChildError(n)),
-    }
+  pub fn nth_child(&self, n: usize) -> Option<AstNodePtr<'a>> {
+    let mut it = self.cursor.children(self.arena).skip(n);
+    it.next()
+      .map(|id| Self::new(self.arena, AstNodeId::from(id)))
   }
 
   pub fn children(&self) -> Box<dyn Iterator<Item = AstNodePtr<'a>> + 'a> {

@@ -29,24 +29,13 @@ std::thread_local! {
 }
 
 /// The interpreter that handles interpreting and executing source code.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Interpreter {
   reporter: GraphicalReportHandler,
-}
-
-impl Default for Interpreter {
-  fn default() -> Self {
-    Self::new()
-  }
+  evaluator: Evaluator,
 }
 
 impl Interpreter {
-  pub fn new() -> Self {
-    Self {
-      reporter: GraphicalReportHandler::new(),
-    }
-  }
-
   /// Interprete and run a lox source string
   pub fn run(&mut self, source: &'_ str) -> Result<()> {
     let parse_result = parse_source_program(source);
@@ -55,8 +44,7 @@ impl Interpreter {
       Parse::Success(syntax_tree) => {
         let ptr = syntax_tree.root_ptr();
         let program = Program::new(ptr);
-        let mut evaluator = Evaluator {};
-        let result = evaluator.visit_program(program);
+        let result = self.evaluator.visit_program(program);
         match result {
           Ok(value) => println!("{}", value),
           Err(error) => self.report_error(error, source),

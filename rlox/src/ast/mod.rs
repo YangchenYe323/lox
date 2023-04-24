@@ -50,6 +50,8 @@ pub struct AstNode {
 pub enum AstNodeKind {
   // Program
   Program,
+  // Declaration
+  VarDecl(SymbolId),
   // Statements
   ExprStmt,
   PrintStmt,
@@ -60,6 +62,7 @@ pub enum AstNodeKind {
   StrLiteral(SymbolId, &'static str),
   NumLiteral(SymbolId, f64),
   BoolLiteral(bool),
+  Var(SymbolId),
   Nil,
 }
 
@@ -233,6 +236,31 @@ impl SyntaxTreeBuilder {
     let node = &mut self.arena[*builder.0];
     node.get_mut().span.end = end;
     builder.0
+  }
+
+  pub fn variable_declaration(
+    &mut self,
+    span: Span,
+    variable: SymbolId,
+    init: Option<AstNodeId>,
+  ) -> AstNodeId {
+    let inner = AstNode {
+      span,
+      inner: AstNodeKind::VarDecl(variable),
+    };
+    let decl = AstNodeId::from(self.arena.new_node(inner));
+    if let Some(init) = init {
+      decl.append(indextree::NodeId::from(init), &mut self.arena);
+    }
+    decl
+  }
+
+  pub fn variable_reference(&mut self, span: Span, variable: SymbolId) -> AstNodeId {
+    let inner = AstNode {
+      span,
+      inner: AstNodeKind::Var(variable),
+    };
+    AstNodeId::from(self.arena.new_node(inner))
   }
 
   pub fn get_span(&self, id: AstNodeId) -> Span {

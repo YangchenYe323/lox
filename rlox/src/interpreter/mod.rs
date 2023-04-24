@@ -1,13 +1,19 @@
-use crate::ast::{
-  facades::{
-    BinaryExpr, BoolLit, Expr, ExprStmt, NilLit, NumericLit, PrintStmt, Program, Stmt, StringLit,
-    TernaryExpr, UnaryExpr,
+use rustc_hash::FxHashMap;
+
+use crate::{
+  ast::{
+    facades::{
+      BinaryExpr, BoolLit, Expr, ExprStmt, NilLit, NumericLit, PrintStmt, Program, Stmt, StringLit,
+      TernaryExpr, UnaryExpr, Var, VarDecl,
+    },
+    visit::AstVisitor,
   },
-  visit::AstVisitor,
+  common::symbol::SymbolId,
+  INTERNER,
 };
 
 use self::{
-  diagnostics::{SpannedLoxRuntimeError, SpannedLoxRuntimeErrorWrapper},
+  diagnostics::{LoxRuntimeError, SpannedLoxRuntimeError, SpannedLoxRuntimeErrorWrapper},
   eval::{BinaryEval, UnaryEval},
   types::LoxValueKind,
 };
@@ -16,7 +22,10 @@ mod diagnostics;
 mod eval;
 mod types;
 
-pub struct Evaluator {}
+#[derive(Debug, Default)]
+pub struct Evaluator {
+  global_variables: FxHashMap<SymbolId, LoxValueKind>,
+}
 
 impl<'a> AstVisitor<'a> for Evaluator {
   type Ret = Result<LoxValueKind, SpannedLoxRuntimeError>;
@@ -31,9 +40,21 @@ impl<'a> AstVisitor<'a> for Evaluator {
 
   fn visit_statement(&mut self, stmt: Stmt<'a>) -> Self::Ret {
     match stmt {
-      Stmt::ExprStmt(stmt) => self.visit_expression_statement(stmt),
-      Stmt::PrintStmt(stmt) => self.visit_print_statement(stmt),
+      Stmt::Expr(stmt) => self.visit_expression_statement(stmt),
+      Stmt::Print(stmt) => self.visit_print_statement(stmt),
+      Stmt::VarDecl(stmt) => self.visit_variable_declaration(stmt),
     }
+  }
+
+  fn visit_variable_declaration(&mut self, var_decl: VarDecl<'a>) -> Self::Ret {
+    let symbol = var_decl.var_symbol();
+    let init = if let Some(expr) = var_decl.init_expr() {
+      self.visit_expression(expr)?
+    } else {
+      LoxValueKind::Nil
+    };
+    self.global_variables.insert(symbol, init);
+    Ok(LoxValueKind::Nil)
   }
 
   fn visit_expression_statement(&mut self, expr_stmt: ExprStmt<'a>) -> Self::Ret {
@@ -55,6 +76,7 @@ impl<'a> AstVisitor<'a> for Evaluator {
       Expr::String(e) => self.visit_string_literal(e),
       Expr::Number(e) => self.visit_numeric_literal(e),
       Expr::Bool(e) => self.visit_bool_literal(e),
+      Expr::Var(e) => self.visit_var_reference(e),
       Expr::Nil(e) => self.visit_nil(e),
     }
   }
@@ -91,6 +113,19 @@ impl<'a> AstVisitor<'a> for Evaluator {
 
   fn visit_bool_literal(&mut self, bool_literal: BoolLit<'a>) -> Self::Ret {
     Ok(LoxValueKind::Boolean(bool_literal.value()))
+  }
+
+  fn visit_var_reference(&mut self, var_reference: Var<'a>) -> Self::Ret {
+    let reference = var_reference.var_symbol();
+    self
+      .global_variables
+      .get(&reference)
+      .cloned()
+      .ok_or_else(|| {
+        let name = INTERNER.with_borrow(|interner| interner.get(reference));
+        let err = LoxRuntimeError::UnresolvedReference(name);
+        var_reference.wrap(err)
+      })
   }
 
   fn visit_nil(&mut self, _nil: NilLit<'a>) -> Self::Ret {

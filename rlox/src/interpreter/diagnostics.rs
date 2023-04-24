@@ -18,6 +18,8 @@ pub enum LoxRuntimeError {
     /* operator */ &'static str,
     /* type */ &'static str,
   ),
+  #[error("RuntimeError: Variable {0} is referred before declaration")]
+  UnresolvedReference(/* variable name*/ &'static str),
 }
 
 #[derive(Debug, Error, Diagnostic)]

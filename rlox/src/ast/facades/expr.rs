@@ -1,8 +1,14 @@
-use serde::{ser::SerializeStruct, Serialize};
+use serde::{
+  ser::{SerializeStruct, SerializeTupleStruct},
+  Serialize,
+};
 
 use crate::{
   ast::{AstNodeKind, BinaryOp, UnaryOp},
-  common::span::{Span, Spanned},
+  common::{
+    span::{Span, Spanned},
+    symbol::SymbolId,
+  },
 };
 
 use super::AstNodePtr;
@@ -15,6 +21,7 @@ pub enum Expr<'a> {
   String(StringLit<'a>),
   Number(NumericLit<'a>),
   Bool(BoolLit<'a>),
+  Var(Var<'a>),
   Nil(NilLit<'a>),
 }
 
@@ -28,6 +35,7 @@ impl<'a> Spanned for Expr<'a> {
       Expr::Number(e) => e.span(),
       Expr::Bool(e) => e.span(),
       Expr::Nil(e) => e.span(),
+      Expr::Var(e) => e.span(),
     }
   }
 }
@@ -42,6 +50,7 @@ impl<'a> Expr<'a> {
       AstNodeKind::NumLiteral(_, _) => Number(NumericLit(ptr)),
       AstNodeKind::UnaryExpr(_) => Unary(UnaryExpr(ptr)),
       AstNodeKind::BoolLiteral(_) => Bool(BoolLit(ptr)),
+      AstNodeKind::Var(_) => Var(self::Var(ptr)),
       AstNodeKind::Nil => Nil(NilLit(ptr)),
       _ => unreachable!(),
     }
@@ -276,5 +285,36 @@ impl<'a> Serialize for TernaryExpr<'a> {
     state.serialize_field("consequence", &c)?;
     state.serialize_field("alternative", &a)?;
     state.end()
+  }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Var<'a>(AstNodePtr<'a>);
+
+impl<'a> Var<'a> {
+  pub fn var_symbol(&self) -> SymbolId {
+    let node = self.0.get();
+    match &node.inner {
+      AstNodeKind::Var(symbol) => *symbol,
+      _ => unreachable!(),
+    }
+  }
+}
+
+impl<'a> Serialize for Var<'a> {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: serde::Serializer,
+  {
+    let mut state = serializer.serialize_tuple_struct("Var", 1)?;
+    let symbol = self.var_symbol();
+    state.serialize_field(&symbol)?;
+    state.end()
+  }
+}
+
+impl<'a> Spanned for Var<'a> {
+  fn span(&self) -> Span {
+    self.0.span()
   }
 }
