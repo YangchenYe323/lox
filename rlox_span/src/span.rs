@@ -17,7 +17,7 @@ impl From<Span> for SourceSpan {
   fn from(value: Span) -> Self {
     SourceSpan::new(
       SourceOffset::from(value.start as usize),
-      SourceOffset::from((value.end - value.start) as usize),
+      SourceOffset::from((value.end - value.start + 1) as usize),
     )
   }
 }

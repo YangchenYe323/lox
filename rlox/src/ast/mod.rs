@@ -165,10 +165,9 @@ impl SyntaxTreeBuilder {
     binary_expr
   }
 
-  pub fn unary_expression(&mut self, start: u32, op: UnaryOp, arg: AstNodeId) -> AstNodeId {
-    let end = self.get_span(arg).end;
+  pub fn unary_expression(&mut self, span: Span, op: UnaryOp, arg: AstNodeId) -> AstNodeId {
     let inner = AstNode {
-      span: Span::new(start, end),
+      span,
       inner: AstNodeKind::UnaryExpr(op),
     };
 
@@ -279,6 +278,11 @@ impl SyntaxTreeBuilder {
     assign.append(indextree::NodeId::from(target), &mut self.arena);
     assign.append(indextree::NodeId::from(value), &mut self.arena);
     assign
+  }
+
+  pub fn re_span(&mut self, node: AstNodeId, new_span: Span) -> AstNodeId {
+    self.arena[indextree::NodeId::from(node)].get_mut().span = new_span;
+    node
   }
 
   pub fn get_span(&self, id: AstNodeId) -> Span {

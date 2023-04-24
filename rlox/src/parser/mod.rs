@@ -261,7 +261,12 @@ impl Parser {
         let op = token_to_unary_op(self.cur_token());
         self.advance();
         let arg = self.unary()?;
-        Ok(self.builder.unary_expression(start, op, arg))
+        let end = self.prev_token().span.end;
+        Ok(
+          self
+            .builder
+            .unary_expression(Span::new(start, end), op, arg),
+        )
       }
       _ => self.primary(),
     }
@@ -300,7 +305,9 @@ impl Parser {
         if !self.advance_if_match(TokenKind::RParen) {
           return Err(unexpected_token(self.cur_token()));
         }
-        Ok(expr)
+        let end = self.prev_token().span.end;
+        let paren_span = Span::new(span.start, end);
+        Ok(self.builder.re_span(expr, paren_span))
       }
       TokenKind::Ident(symbol) => {
         self.advance();
