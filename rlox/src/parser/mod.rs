@@ -20,7 +20,7 @@ pub enum Parse {
   LexError(Vec<LexerError>),
 }
 
-pub fn parse_source(source: &str) -> Parse {
+pub fn parse_source_program(source: &str) -> Parse {
   let lex_result = lex_source(source);
   match lex_result {
     Lex::Success(tokens) => {

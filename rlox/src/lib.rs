@@ -19,7 +19,7 @@ use miette::{Diagnostic, GraphicalReportHandler, Report, Result};
 use crate::{
   ast::visit::AstVisitor,
   interpreter::Evaluator,
-  parser::{parse_source, Parse},
+  parser::{parse_source_program, Parse},
 };
 
 // Global variables in the parsing context.
@@ -49,7 +49,7 @@ impl Interpreter {
 
   /// Interprete and run a lox source string
   pub fn run(&mut self, source: &'_ str) -> Result<()> {
-    let parse_result = parse_source(source);
+    let parse_result = parse_source_program(source);
 
     match parse_result {
       Parse::Success(syntax_tree) => {
