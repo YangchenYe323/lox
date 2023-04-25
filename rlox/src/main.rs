@@ -9,6 +9,8 @@ use rustyline::error::ReadlineError;
 use rustyline::history::{FileHistory, History};
 use rustyline::{DefaultEditor, Editor, Helper};
 
+use colored::*;
+
 #[derive(Debug, Parser)]
 #[command(author, version, about, long_about = None)]
 pub struct Args {
@@ -26,7 +28,8 @@ fn main() -> Result<()> {
 
 fn run_file(file: PathBuf, interpreter: &mut Interpreter) -> Result<()> {
   let source = std::fs::read_to_string(file.as_path()).unwrap();
-  interpreter.run(&source)?;
+  let output = interpreter.run(&source);
+  println!("{}", output);
   Ok(())
 }
 
@@ -37,12 +40,10 @@ fn run_interactive(interpreter: &mut Interpreter) -> Result<()> {
     let readline = rl.readline();
     match readline {
       Ok(line) => {
-        if let Err(report) = interpreter.run(&line) {
-          println!("{}", report);
-        }
+        println!("{}", interpreter.run(&line).cyan().dimmed());
       }
       Err(ReadlineError::Interrupted) => {
-        println!("CTRL-C");
+        println!("{}", "CTRL-C".cyan().dimmed());
       }
       Err(ReadlineError::Eof) => {
         break;
