@@ -1,7 +1,7 @@
 use crate::ast::{
   facades::{
-    AssignExpr, BinaryExpr, BoolLit, Expr, ExprStmt, NilLit, NumericLit, PrintStmt, Program, Stmt,
-    StringLit, TernaryExpr, UnaryExpr, Var, VarDecl,
+    AssignExpr, BinaryExpr, Block, BoolLit, Expr, ExprStmt, NilLit, NumericLit, PrintStmt, Program,
+    Stmt, StringLit, TernaryExpr, UnaryExpr, Var, VarDecl,
   },
   visit::AstVisitor,
 };
@@ -27,10 +27,12 @@ impl<'a> AstVisitor<'a> for Evaluator {
   type Ret = Result<LoxValueKind, SpannedLoxRuntimeError>;
 
   fn visit_program(&mut self, program: Program<'a>) -> Self::Ret {
+    self.environment.enter_scope();
     let mut value = LoxValueKind::nil();
     for stmt in program.stmts() {
       value = self.visit_statement(stmt)?;
     }
+    self.environment.enter_scope();
     Ok(value)
   }
 
@@ -39,6 +41,7 @@ impl<'a> AstVisitor<'a> for Evaluator {
       Stmt::Expr(stmt) => self.visit_expression_statement(stmt),
       Stmt::Print(stmt) => self.visit_print_statement(stmt),
       Stmt::VarDecl(stmt) => self.visit_variable_declaration(stmt),
+      Stmt::Block(stmt) => self.visit_block(stmt),
     }
   }
 
@@ -62,6 +65,16 @@ impl<'a> AstVisitor<'a> for Evaluator {
     let expr = self.visit_expression(print_stmt.expr())?;
     println!("{}", expr);
     Ok(LoxValueKind::nil())
+  }
+
+  fn visit_block(&mut self, block: Block<'a>) -> Self::Ret {
+    self.environment.enter_scope();
+    let mut value = LoxValueKind::nil();
+    for stmt in block.statements() {
+      value = self.visit_statement(stmt)?;
+    }
+    self.environment.exit_scope();
+    Ok(value)
   }
 
   fn visit_expression(&mut self, expr: Expr<'a>) -> Self::Ret {

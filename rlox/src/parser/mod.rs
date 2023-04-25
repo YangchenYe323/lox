@@ -112,11 +112,35 @@ impl Parser {
     )
   }
 
+  /// statement → exprStmt
+  ///           | printStmt
+  ///           | block ;
   pub fn stmt(&mut self) -> ParserResult<AstNodeId> {
     match self.cur_token().kind {
       TokenKind::Print => self.print_stmt(),
+      TokenKind::LBrace => self.block(),
       _ => self.expr_stmt(),
     }
+  }
+
+  /// block → "{" declaration* "}" ;
+  pub fn block(&mut self) -> ParserResult<AstNodeId> {
+    let start = self.cur_span_start();
+    let block = self.builder.start_block(start);
+    self.advance();
+    while !matches!(self.cur_token().kind, TokenKind::RBrace | TokenKind::Eof) {
+      let decl = self.decl()?;
+      self.builder.add_block_statement(&block, decl);
+    }
+    if !self.advance_if_match(TokenKind::RBrace) {
+      return Err(ParserError::UnexpectedToken(
+        self.cur_token().span,
+        self.cur_token().kind.to_str(),
+      ));
+    }
+    let end = self.prev_token().span.end;
+    let block = self.builder.finish_block(block, end);
+    Ok(block)
   }
 
   /// exprStmt → expression ";" ;

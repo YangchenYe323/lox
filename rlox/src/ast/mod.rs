@@ -55,6 +55,7 @@ pub enum AstNodeKind {
   // Statements
   ExprStmt,
   PrintStmt,
+  Block,
   // Expressions
   TernaryExpr,
   Assign,
@@ -280,6 +281,27 @@ impl SyntaxTreeBuilder {
     assign
   }
 
+  pub fn start_block(&mut self, start: u32) -> BlockBuilder {
+    let inner = AstNode {
+      span: Span::new(start, u32::MAX),
+      inner: AstNodeKind::Block,
+    };
+    BlockBuilder(AstNodeId::from(self.arena.new_node(inner)))
+  }
+
+  pub fn add_block_statement(&mut self, builder: &BlockBuilder, stmt: AstNodeId) {
+    let BlockBuilder(block_id) = builder;
+    block_id.append(indextree::NodeId::from(stmt), &mut self.arena);
+  }
+
+  pub fn finish_block(&mut self, BlockBuilder(block): BlockBuilder, end: u32) -> AstNodeId {
+    self.arena[indextree::NodeId::from(block)]
+      .get_mut()
+      .span
+      .end = end;
+    block
+  }
+
   pub fn re_span(&mut self, node: AstNodeId, new_span: Span) -> AstNodeId {
     self.arena[indextree::NodeId::from(node)].get_mut().span = new_span;
     node
@@ -301,3 +323,6 @@ impl SyntaxTreeBuilder {
 
 #[derive(Debug)]
 pub struct ProgramBuilder(AstNodeId);
+
+#[derive(Debug)]
+pub struct BlockBuilder(AstNodeId);

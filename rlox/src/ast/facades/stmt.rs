@@ -1,4 +1,7 @@
-use serde::{ser::SerializeStruct, Serialize};
+use serde::{
+  ser::{SerializeSeq, SerializeStruct},
+  Serialize,
+};
 
 use crate::ast::AstNodeKind;
 
@@ -11,6 +14,7 @@ pub enum Stmt<'a> {
   Expr(ExprStmt<'a>),
   Print(PrintStmt<'a>),
   VarDecl(VarDecl<'a>),
+  Block(Block<'a>),
 }
 
 impl<'a> Stmt<'a> {
@@ -19,6 +23,7 @@ impl<'a> Stmt<'a> {
       AstNodeKind::ExprStmt => Self::Expr(ExprStmt(ptr)),
       AstNodeKind::PrintStmt => Self::Print(PrintStmt(ptr)),
       AstNodeKind::VarDecl(_) => Self::VarDecl(VarDecl(ptr)),
+      AstNodeKind::Block => Self::Block(Block(ptr)),
       _ => unreachable!(),
     }
   }
@@ -30,6 +35,7 @@ impl<'a> Spanned for Stmt<'a> {
       Stmt::Expr(s) => s.span(),
       Stmt::Print(s) => s.span(),
       Stmt::VarDecl(s) => s.span(),
+      Stmt::Block(s) => s.span(),
     }
   }
 }
@@ -122,6 +128,34 @@ impl<'a> Serialize for VarDecl<'a> {
 }
 
 impl<'a> Spanned for VarDecl<'a> {
+  fn span(&self) -> Span {
+    self.0.span()
+  }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Block<'a>(AstNodePtr<'a>);
+
+impl<'a> Block<'a> {
+  pub fn statements(&self) -> Box<dyn Iterator<Item = Stmt<'a>> + 'a> {
+    Box::new(self.0.children().map(Stmt::new))
+  }
+}
+
+impl<'a> Serialize for Block<'a> {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: serde::Serializer,
+  {
+    let mut state = serializer.serialize_seq(None)?;
+    for stmt in self.statements() {
+      state.serialize_element(&stmt)?;
+    }
+    state.end()
+  }
+}
+
+impl<'a> Spanned for Block<'a> {
   fn span(&self) -> Span {
     self.0.span()
   }

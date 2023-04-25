@@ -20,7 +20,7 @@ pub use self::expr::{
   UnaryExpr, Var,
 };
 pub use self::program::Program;
-pub use self::stmt::{ExprStmt, PrintStmt, Stmt, VarDecl};
+pub use self::stmt::{Block, ExprStmt, PrintStmt, Stmt, VarDecl};
 
 /// A shared reference of an [AstNode], which packs together the arena
 /// and the id.
