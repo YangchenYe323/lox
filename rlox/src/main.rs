@@ -6,7 +6,8 @@ use clap::Parser;
 use miette::Result;
 use rlox::Interpreter;
 use rustyline::error::ReadlineError;
-use rustyline::DefaultEditor;
+use rustyline::history::{FileHistory, History};
+use rustyline::{DefaultEditor, Editor, Helper};
 
 #[derive(Debug, Parser)]
 #[command(author, version, about, long_about = None)]
@@ -30,16 +31,15 @@ fn run_file(file: PathBuf, interpreter: &mut Interpreter) -> Result<()> {
 }
 
 fn run_interactive(interpreter: &mut Interpreter) -> Result<()> {
-  let mut rl = DefaultEditor::new().unwrap();
+  let mut rl = PromptReader::default();
 
   loop {
-    let readline = rl.readline("> ");
+    let readline = rl.readline();
     match readline {
       Ok(line) => {
         if let Err(report) = interpreter.run(&line) {
           println!("{}", report);
         }
-        rl.add_history_entry(line).unwrap();
       }
       Err(ReadlineError::Interrupted) => {
         println!("CTRL-C");
@@ -54,4 +54,48 @@ fn run_interactive(interpreter: &mut Interpreter) -> Result<()> {
     }
   }
   Ok(())
+}
+
+#[derive(Debug)]
+pub struct PromptReader<H: Helper, I: History> {
+  editor: Editor<H, I>,
+  buffer: String,
+  delimiters: i32,
+}
+
+impl Default for PromptReader<(), FileHistory> {
+  fn default() -> Self {
+    Self {
+      editor: DefaultEditor::new().unwrap(),
+      buffer: Default::default(),
+      delimiters: Default::default(),
+    }
+  }
+}
+
+impl<H: Helper, I: History> PromptReader<H, I> {
+  pub fn readline(&mut self) -> rustyline::Result<String> {
+    let s = self.editor.readline("> ")?;
+    self.buffer_and_update_delimiters(&s);
+    while self.delimiters > 0 {
+      let s = self.editor.readline("... ")?;
+      self.buffer.push('\n');
+      self.buffer_and_update_delimiters(&s);
+    }
+    self.delimiters = 0;
+    let res = std::mem::take(&mut self.buffer);
+    self.editor.add_history_entry(&res)?;
+    Ok(res)
+  }
+
+  fn buffer_and_update_delimiters(&mut self, input: &str) {
+    self.buffer.push_str(input);
+    for c in input.chars() {
+      match c {
+        '(' | '{' => self.delimiters += 1,
+        '}' | ')' => self.delimiters -= 1,
+        _ => (),
+      }
+    }
+  }
 }
