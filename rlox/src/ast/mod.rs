@@ -177,8 +177,7 @@ impl SyntaxTreeBuilder {
     };
 
     let logical_expr = AstNodeId::from(self.arena.new_node(inner));
-    logical_expr.append(indextree::NodeId::from(left), &mut self.arena);
-    logical_expr.append(indextree::NodeId::from(right), &mut self.arena);
+    append_child!(logical_expr, &mut self.arena, left, right);
     logical_expr
   }
 
@@ -197,8 +196,7 @@ impl SyntaxTreeBuilder {
     };
 
     let binary_expr = AstNodeId::from(self.arena.new_node(inner));
-    binary_expr.append(indextree::NodeId::from(left), &mut self.arena);
-    binary_expr.append(indextree::NodeId::from(right), &mut self.arena);
+    append_child!(binary_expr, &mut self.arena, left, right);
     binary_expr
   }
 
@@ -209,7 +207,7 @@ impl SyntaxTreeBuilder {
     };
 
     let unary_expr = AstNodeId::from(self.arena.new_node(inner));
-    unary_expr.append(indextree::NodeId::from(arg), &mut self.arena);
+    append_child!(unary_expr, &mut self.arena, arg);
     unary_expr
   }
 
@@ -227,9 +225,7 @@ impl SyntaxTreeBuilder {
     };
 
     let ternary = AstNodeId::from(self.arena.new_node(inner));
-    ternary.append(indextree::NodeId::from(pred), &mut self.arena);
-    ternary.append(indextree::NodeId::from(conseq), &mut self.arena);
-    ternary.append(indextree::NodeId::from(alt), &mut self.arena);
+    append_child!(ternary, &mut self.arena, pred, conseq, alt);
 
     ternary
   }
@@ -240,7 +236,7 @@ impl SyntaxTreeBuilder {
       inner: AstNodeKind::ExprStmt,
     };
     let stmt = AstNodeId::from(self.arena.new_node(inner));
-    stmt.append(indextree::NodeId::from(expr), &mut self.arena);
+    append_child!(stmt, &mut self.arena, expr);
 
     stmt
   }
@@ -251,7 +247,7 @@ impl SyntaxTreeBuilder {
       inner: AstNodeKind::PrintStmt,
     };
     let stmt = AstNodeId::from(self.arena.new_node(inner));
-    stmt.append(indextree::NodeId::from(expr), &mut self.arena);
+    append_child!(stmt, &mut self.arena, expr);
 
     stmt
   }
@@ -264,32 +260,28 @@ impl SyntaxTreeBuilder {
     ProgramBuilder(AstNodeId::from(self.arena.new_node(inner)))
   }
 
-  pub fn add_statement(&mut self, builder: &ProgramBuilder, stmt: AstNodeId) {
-    builder
-      .0
-      .append(indextree::NodeId::from(stmt), &mut self.arena);
+  pub fn add_statement(&mut self, ProgramBuilder(program): &ProgramBuilder, stmt: AstNodeId) {
+    append_child!(program, &mut self.arena, stmt);
   }
 
-  pub fn finish_program(&mut self, builder: ProgramBuilder, end: u32) -> AstNodeId {
-    let node = &mut self.arena[*builder.0];
+  pub fn finish_program(&mut self, ProgramBuilder(program): ProgramBuilder, end: u32) -> AstNodeId {
+    let node = &mut self.arena[indextree::NodeId::from(program)];
     node.get_mut().span.end = end;
-    builder.0
+    program
   }
 
   pub fn variable_declaration(
     &mut self,
     span: Span,
     variable: SymbolId,
-    init: Option<AstNodeId>,
+    init: AstNodeId,
   ) -> AstNodeId {
     let inner = AstNode {
       span,
       inner: AstNodeKind::VarDecl(variable),
     };
     let decl = AstNodeId::from(self.arena.new_node(inner));
-    if let Some(init) = init {
-      decl.append(indextree::NodeId::from(init), &mut self.arena);
-    }
+    append_child!(decl, &mut self.arena, init);
     decl
   }
 
@@ -312,8 +304,7 @@ impl SyntaxTreeBuilder {
       inner: AstNodeKind::Assign,
     };
     let assign = AstNodeId::from(self.arena.new_node(inner));
-    assign.append(indextree::NodeId::from(target), &mut self.arena);
-    assign.append(indextree::NodeId::from(value), &mut self.arena);
+    append_child!(assign, &mut self.arena, target, value);
     assign
   }
 
@@ -327,7 +318,7 @@ impl SyntaxTreeBuilder {
 
   pub fn add_block_statement(&mut self, builder: &BlockBuilder, stmt: AstNodeId) {
     let BlockBuilder(block_id) = builder;
-    block_id.append(indextree::NodeId::from(stmt), &mut self.arena);
+    append_child!(block_id, &mut self.arena, stmt);
   }
 
   pub fn finish_block(&mut self, BlockBuilder(block): BlockBuilder, end: u32) -> AstNodeId {
@@ -358,9 +349,7 @@ impl SyntaxTreeBuilder {
       inner: AstNodeKind::IfStmt,
     };
     let if_stmt = AstNodeId::from(self.arena.new_node(inner));
-    if_stmt.append(indextree::NodeId::from(pred), &mut self.arena);
-    if_stmt.append(indextree::NodeId::from(conseq), &mut self.arena);
-    if_stmt.append(indextree::NodeId::from(alt), &mut self.arena);
+    append_child!(if_stmt, &mut self.arena, pred, conseq, alt);
     if_stmt
   }
 

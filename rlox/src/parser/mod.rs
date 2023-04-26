@@ -107,9 +107,10 @@ impl Parser {
     self.advance();
 
     let init = if self.advance_if_match(TokenKind::Eq) {
-      Some(self.expression()?)
+      self.expression()?
     } else {
-      None
+      let end = self.prev_token().span.end;
+      self.builder.nil(Span::new(end, end))
     };
 
     self.automatic_semicolon_insertion()?;
