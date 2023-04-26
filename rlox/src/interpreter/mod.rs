@@ -1,10 +1,10 @@
 use crate::ast::{
   facades::{
-    AssignExpr, BinaryExpr, Block, BoolLit, Expr, ExprStmt, IfStmt, NilLit, NumericLit, PrintStmt,
-    Program, Stmt, StringLit, TernaryExpr, UnaryExpr, Var, VarDecl,
+    AssignExpr, BinaryExpr, Block, BoolLit, Expr, ExprStmt, IfStmt, LogicExpr, NilLit, NumericLit,
+    PrintStmt, Program, Stmt, StringLit, TernaryExpr, UnaryExpr, Var, VarDecl,
   },
   visit::AstVisitor,
-  BinaryOp,
+  LogicalOp,
 };
 
 use self::{
@@ -90,6 +90,7 @@ impl<'a> AstVisitor<'a> for Evaluator {
 
   fn visit_expression(&mut self, expr: Expr<'a>) -> Self::Ret {
     match expr {
+      Expr::Logic(e) => self.visit_logic_expression(e),
       Expr::Assign(e) => self.visit_assignment_expression(e),
       Expr::Ternary(e) => self.visit_ternary_expression(e),
       Expr::Binary(e) => self.visit_binary_expression(e),
@@ -116,23 +117,20 @@ impl<'a> AstVisitor<'a> for Evaluator {
 
   fn visit_binary_expression(&mut self, binary_expr: BinaryExpr<'a>) -> Self::Ret {
     let op = binary_expr.operator();
+
+    let left_operand = self.visit_expression(binary_expr.left_operand())?;
+    let right_operand = self.visit_expression(binary_expr.right_operand())?;
+    op.evaluate(&left_operand, &right_operand)
+      .map_err(|e| binary_expr.wrap(e))
+  }
+
+  fn visit_logic_expression(&mut self, logic_expr: LogicExpr<'a>) -> Self::Ret {
+    let op = logic_expr.operator();
+    let left = logic_expr.left_operand();
+    let right = logic_expr.right_operand();
     match op {
-      BinaryOp::LogicAnd => logical_and(
-        self,
-        binary_expr.left_operand(),
-        binary_expr.right_operand(),
-      ),
-      BinaryOp::LogicOr => logical_or(
-        self,
-        binary_expr.left_operand(),
-        binary_expr.right_operand(),
-      ),
-      op => {
-        let left_operand = self.visit_expression(binary_expr.left_operand())?;
-        let right_operand = self.visit_expression(binary_expr.right_operand())?;
-        op.evaluate(&left_operand, &right_operand)
-          .map_err(|e| binary_expr.wrap(e))
-      }
+      LogicalOp::And => logical_and(self, left, right),
+      LogicalOp::Or => logical_or(self, left, right),
     }
   }
 

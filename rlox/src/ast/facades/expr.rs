@@ -3,7 +3,7 @@ use serde::{
   Serialize,
 };
 
-use crate::ast::{AstNodeKind, BinaryOp, UnaryOp};
+use crate::ast::{AstNodeKind, BinaryOp, LogicalOp, UnaryOp};
 
 use super::AstNodePtr;
 
@@ -13,6 +13,7 @@ use rlox_span::{Span, Spanned, SymbolId};
 pub enum Expr<'a> {
   Assign(AssignExpr<'a>),
   Ternary(TernaryExpr<'a>),
+  Logic(LogicExpr<'a>),
   Binary(BinaryExpr<'a>),
   Unary(UnaryExpr<'a>),
   String(StringLit<'a>),
@@ -34,6 +35,7 @@ impl<'a> Spanned for Expr<'a> {
       Expr::Nil(e) => e.span(),
       Expr::Var(e) => e.span(),
       Expr::Assign(e) => e.span(),
+      Expr::Logic(e) => e.span(),
     }
   }
 }
@@ -45,6 +47,7 @@ impl<'a> Expr<'a> {
       AstNodeKind::TernaryExpr => Ternary(TernaryExpr(ptr)),
       AstNodeKind::Assign => Assign(AssignExpr(ptr)),
       AstNodeKind::BinaryExpr(_) => Binary(BinaryExpr(ptr)),
+      AstNodeKind::LogicExpr(_) => Logic(LogicExpr(ptr)),
       AstNodeKind::StrLiteral(_, _) => String(StringLit(ptr)),
       AstNodeKind::NumLiteral(_, _) => Number(NumericLit(ptr)),
       AstNodeKind::UnaryExpr(_) => Unary(UnaryExpr(ptr)),
@@ -364,5 +367,49 @@ impl<'a> AssignTarget<'a> {
       AstNodeKind::Var(_) => Self::Ident(Var(ptr)),
       _ => unreachable!(),
     }
+  }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct LogicExpr<'a>(AstNodePtr<'a>);
+
+impl<'a> LogicExpr<'a> {
+  pub fn operator(&self) -> LogicalOp {
+    match &self.0.get().inner {
+      AstNodeKind::LogicExpr(op) => *op,
+      _ => unreachable!(),
+    }
+  }
+
+  pub fn left_operand(&self) -> Expr<'a> {
+    let left = self.0.nth_child(0).unwrap();
+    Expr::new(left)
+  }
+
+  pub fn right_operand(&self) -> Expr<'a> {
+    let right = self.0.nth_child(1).unwrap();
+    Expr::new(right)
+  }
+}
+
+impl<'a> Spanned for LogicExpr<'a> {
+  fn span(&self) -> Span {
+    self.0.span()
+  }
+}
+
+impl<'a> Serialize for LogicExpr<'a> {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: serde::Serializer,
+  {
+    let mut state = serializer.serialize_struct("LogicExpr", 3)?;
+    let op = self.operator();
+    let left = self.left_operand();
+    let right = self.right_operand();
+    state.serialize_field("op", &op)?;
+    state.serialize_field("left_operand", &left)?;
+    state.serialize_field("right_operand", &right)?;
+    state.end()
   }
 }

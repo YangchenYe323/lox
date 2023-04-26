@@ -61,6 +61,7 @@ pub enum AstNodeKind {
   TernaryExpr,
   Assign,
   BinaryExpr(BinaryOp),
+  LogicExpr(LogicalOp),
   UnaryExpr(UnaryOp),
   StrLiteral(SymbolId, &'static str),
   NumLiteral(SymbolId, f64),
@@ -81,8 +82,12 @@ pub enum BinaryOp {
   Minus,
   Mult,
   Div,
-  LogicAnd,
-  LogicOr,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
+pub enum LogicalOp {
+  And,
+  Or,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
@@ -147,6 +152,26 @@ impl SyntaxTreeBuilder {
       inner: AstNodeKind::Nil,
     };
     AstNodeId::from(self.arena.new_node(inner))
+  }
+
+  pub fn logical_expression(
+    &mut self,
+    left: AstNodeId,
+    op: LogicalOp,
+    right: AstNodeId,
+  ) -> AstNodeId {
+    let start = self.get_span(left).start;
+    let end = self.get_span(right).end;
+
+    let inner = AstNode {
+      span: Span::new(start, end),
+      inner: AstNodeKind::LogicExpr(op),
+    };
+
+    let logical_expr = AstNodeId::from(self.arena.new_node(inner));
+    logical_expr.append(indextree::NodeId::from(left), &mut self.arena);
+    logical_expr.append(indextree::NodeId::from(right), &mut self.arena);
+    logical_expr
   }
 
   pub fn binary_expression(

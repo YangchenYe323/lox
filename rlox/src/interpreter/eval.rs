@@ -33,7 +33,6 @@ impl BinaryEval for BinaryOp {
       BinaryOp::Minus => sub(left_operand, right_operand),
       BinaryOp::Mult => mult(left_operand, right_operand),
       BinaryOp::Div => div(left_operand, right_operand),
-      _ => unreachable!(),
     }
   }
 }

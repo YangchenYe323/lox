@@ -1,7 +1,7 @@
 mod diagnostics;
 
 use crate::{
-  ast::{AstNodeId, BinaryOp, SyntaxTree, SyntaxTreeBuilder, UnaryOp},
+  ast::{AstNodeId, BinaryOp, LogicalOp, SyntaxTree, SyntaxTreeBuilder, UnaryOp},
   lexer::{lex_source, Lex, LexerError, Token, TokenKind},
   INTERNER,
 };
@@ -260,7 +260,7 @@ impl Parser {
       let operand = self.logic_and()?;
       base = self
         .builder
-        .binary_expression(base, BinaryOp::LogicOr, operand);
+        .logical_expression(base, LogicalOp::Or, operand);
     }
     Ok(base)
   }
@@ -273,7 +273,7 @@ impl Parser {
       let operand = self.equality()?;
       base = self
         .builder
-        .binary_expression(base, BinaryOp::LogicAnd, operand);
+        .logical_expression(base, LogicalOp::And, operand);
     }
     Ok(base)
   }
