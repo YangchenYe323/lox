@@ -11,6 +11,8 @@ pub enum ParserError {
   UnexpectedToken(#[label] Span, /*token name */ &'static str),
   #[error("Invalid assignment target")]
   InvalidAssignment(#[label] Span),
+  #[error("Break statement cannot be used outside of loop")]
+  BreakOutsideLoop(#[label] Span),
 }
 
 pub fn unexpected_token(token: &Token) -> ParserError {

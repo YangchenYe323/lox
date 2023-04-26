@@ -17,6 +17,7 @@ pub enum Stmt<'a> {
   Block(Block<'a>),
   If(IfStmt<'a>),
   While(WhileStmt<'a>),
+  Break(BreakStmt<'a>),
 }
 
 impl<'a> Stmt<'a> {
@@ -28,6 +29,7 @@ impl<'a> Stmt<'a> {
       AstNodeKind::Block => Self::Block(Block(ptr)),
       AstNodeKind::IfStmt => Self::If(IfStmt(ptr)),
       AstNodeKind::WhileStmt => Self::While(WhileStmt(ptr)),
+      AstNodeKind::Break => Self::Break(BreakStmt(ptr)),
       k => {
         unreachable!(
           "Shouldn't construct statement out of AST Node kind: {:?}",
@@ -47,6 +49,7 @@ impl<'a> Spanned for Stmt<'a> {
       Stmt::Block(s) => s.span(),
       Stmt::If(s) => s.span(),
       Stmt::While(s) => s.span(),
+      Stmt::Break(s) => s.span(),
     }
   }
 }
@@ -248,6 +251,24 @@ impl<'a> Serialize for WhileStmt<'a> {
 }
 
 impl<'a> Spanned for WhileStmt<'a> {
+  fn span(&self) -> Span {
+    self.0.span()
+  }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct BreakStmt<'a>(AstNodePtr<'a>);
+
+impl<'a> Serialize for BreakStmt<'a> {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: serde::Serializer,
+  {
+    serializer.serialize_str("break")
+  }
+}
+
+impl<'a> Spanned for BreakStmt<'a> {
   fn span(&self) -> Span {
     self.0.span()
   }

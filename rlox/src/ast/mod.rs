@@ -58,6 +58,7 @@ pub enum AstNodeKind {
   Block,
   IfStmt,
   WhileStmt,
+  Break,
   // Expressions
   TernaryExpr,
   Assign,
@@ -335,6 +336,14 @@ impl SyntaxTreeBuilder {
       .span
       .end = end;
     block
+  }
+
+  pub fn break_statement(&mut self, span: Span) -> AstNodeId {
+    let inner = AstNode {
+      span,
+      inner: AstNodeKind::Break,
+    };
+    AstNodeId::from(self.arena.new_node(inner))
   }
 
   pub fn if_statement(

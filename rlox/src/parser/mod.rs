@@ -6,6 +6,7 @@ use crate::{
   INTERNER,
 };
 
+use bitflags::bitflags;
 use rlox_span::Span;
 
 use self::diagnostics::{unexpected_token, ParserError};
@@ -48,11 +49,19 @@ pub fn parse_source_program(source: &str) -> Parse {
   }
 }
 
+bitflags! {
+  #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+  struct ParserContextFlags: u32 {
+    const IN_LOOP = 1 << 0;
+  }
+}
+
 pub struct Parser {
   tokens: Vec<Token>,
   builder: SyntaxTreeBuilder,
   current_idx: usize,
   recovered_errors: Vec<ParserError>,
+  context: ParserContextFlags,
 }
 
 impl Parser {
@@ -62,6 +71,7 @@ impl Parser {
       builder: SyntaxTreeBuilder::default(),
       current_idx: 0,
       recovered_errors: vec![],
+      context: ParserContextFlags::empty(),
     }
   }
 
@@ -123,22 +133,39 @@ impl Parser {
       TokenKind::LBrace => self.block(),
       TokenKind::If => self.if_stmt(),
       TokenKind::While => self.while_stmt(),
+      TokenKind::Break => self.break_stmt(),
       _ => self.expr_stmt(),
     }
   }
 
-  /// whileStmt → "while" expression block ;
-  pub fn while_stmt(&mut self) -> ParserResult<AstNodeId> {
+  pub fn break_stmt(&mut self) -> ParserResult<AstNodeId> {
     let start = self.cur_span_start();
     self.advance();
-    let pred = self.expression()?;
-    let body = self.block()?;
+    self.automatic_semicolon_insertion()?;
     let end = self.prev_token().span.end;
-    Ok(
+    let span = Span::new(start, end);
+    if !self.context.contains(ParserContextFlags::IN_LOOP) {
       self
-        .builder
-        .while_statement(Span::new(start, end), pred, body),
-    )
+        .recovered_errors
+        .push(ParserError::BreakOutsideLoop(span));
+    }
+    Ok(self.builder.break_statement(span))
+  }
+
+  /// whileStmt → "while" expression block ;
+  pub fn while_stmt(&mut self) -> ParserResult<AstNodeId> {
+    self.with_context(ParserContextFlags::IN_LOOP, |parser| {
+      let start = parser.cur_span_start();
+      parser.advance();
+      let pred = parser.expression()?;
+      let body = parser.block()?;
+      let end = parser.prev_token().span.end;
+      Ok(
+        parser
+          .builder
+          .while_statement(Span::new(start, end), pred, body),
+      )
+    })
   }
 
   /// ifStmt → "if" expression  block
@@ -454,6 +481,19 @@ impl Parser {
       self.cur_token().span,
       self.cur_token().kind.to_str(),
     ))
+  }
+
+  fn with_context<T>(
+    &mut self,
+    context: ParserContextFlags,
+    f: impl FnOnce(&mut Parser) -> T,
+  ) -> T {
+    let old_context = self.context;
+    let new_context = old_context | context;
+    self.context = new_context;
+    let result = f(self);
+    self.context = old_context;
+    result
   }
 }
 

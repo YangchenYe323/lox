@@ -19,6 +19,7 @@ rustyline = { workspace = true }
 indextree = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+bitflags = { workspace = true }
 
 rlox_span = { workspace = true }
 

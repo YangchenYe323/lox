@@ -62,6 +62,7 @@ pub enum TokenKind {
 
   // Keywords
   And,
+  Break,
   Class,
   Else,
   False,
@@ -110,6 +111,7 @@ impl TokenKind {
       TokenKind::Str(symbol) => INTERNER.with_borrow(|interner| interner.get(symbol)),
       TokenKind::Number(symbol, _) => INTERNER.with_borrow(|interner| interner.get(symbol)),
       TokenKind::And => "and",
+      TokenKind::Break => "break",
       TokenKind::Class => "class",
       TokenKind::Else => "else",
       TokenKind::False => "false",

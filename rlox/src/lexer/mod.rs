@@ -348,6 +348,7 @@ impl<'a> Lexer<'a> {
     match s {
       // Keywords
       "and" => And,
+      "break" => Break,
       "class" => Class,
       "else" => Else,
       "false" => False,

@@ -1,7 +1,10 @@
+use bitflags::bitflags;
+
 use crate::ast::{
   facades::{
-    AssignExpr, BinaryExpr, Block, BoolLit, Expr, ExprStmt, IfStmt, LogicExpr, NilLit, NumericLit,
-    PrintStmt, Program, Stmt, StringLit, TernaryExpr, UnaryExpr, Var, VarDecl, WhileStmt,
+    AssignExpr, BinaryExpr, Block, BoolLit, BreakStmt, Expr, ExprStmt, IfStmt, LogicExpr, NilLit,
+    NumericLit, PrintStmt, Program, Stmt, StringLit, TernaryExpr, UnaryExpr, Var, VarDecl,
+    WhileStmt,
   },
   visit::AstVisitor,
   LogicalOp,
@@ -22,6 +25,7 @@ mod types;
 #[derive(Debug, Default)]
 pub struct Evaluator {
   environment: Environment,
+  context: ExecutionContext,
 }
 
 impl<'a> AstVisitor<'a> for Evaluator {
@@ -45,16 +49,27 @@ impl<'a> AstVisitor<'a> for Evaluator {
       Stmt::Block(stmt) => self.visit_block(stmt),
       Stmt::If(stmt) => self.visit_if_statement(stmt),
       Stmt::While(stmt) => self.visit_while_statement(stmt),
+      Stmt::Break(stmt) => self.visit_break_statement(stmt),
     }
   }
 
-  fn visit_while_statement(&mut self, while_stmt: WhileStmt<'a>) -> Self::Ret {
-    let pred = while_stmt.pred();
-    let body = while_stmt.body();
-    while self.visit_expression(pred)?.is_truthful() {
-      self.visit_statement(body)?;
-    }
+  fn visit_break_statement(&mut self, _break_stmt: BreakStmt<'a>) -> Self::Ret {
+    self.context |= ExecutionContext::BREAK;
     Ok(LoxValueKind::nil())
+  }
+
+  fn visit_while_statement(&mut self, while_stmt: WhileStmt<'a>) -> Self::Ret {
+    self.with_context(ExecutionContext::IN_LOOP, |parser| {
+      let pred = while_stmt.pred();
+      let body = while_stmt.body();
+      while parser.visit_expression(pred)?.is_truthful() {
+        parser.visit_statement(body)?;
+        if parser.to_break_from_loop() {
+          break;
+        }
+      }
+      Ok(LoxValueKind::nil())
+    })
   }
 
   fn visit_if_statement(&mut self, if_stmt: IfStmt<'a>) -> Self::Ret {
@@ -93,6 +108,9 @@ impl<'a> AstVisitor<'a> for Evaluator {
     let mut value = LoxValueKind::nil();
     for stmt in block.statements() {
       value = self.visit_statement(stmt)?;
+      if self.to_break_from_loop() {
+        break;
+      }
     }
     self.environment.exit_scope();
     Ok(value)
@@ -180,5 +198,33 @@ impl<'a> AstVisitor<'a> for Evaluator {
 
   fn visit_nil(&mut self, _nil: NilLit<'a>) -> Self::Ret {
     Ok(LoxValueKind::nil())
+  }
+}
+
+bitflags! {
+  #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+  struct ExecutionContext: u32 {
+    const IN_LOOP = 1 << 0;
+    const BREAK = 1 << 1;
+  }
+}
+
+impl Evaluator {
+  fn with_context<T>(
+    &mut self,
+    context: ExecutionContext,
+    f: impl FnOnce(&mut Evaluator) -> T,
+  ) -> T {
+    let old_context = self.context;
+    self.context = old_context | context;
+    let result = f(self);
+    self.context = old_context;
+    result
+  }
+
+  fn to_break_from_loop(&self) -> bool {
+    self
+      .context
+      .contains(ExecutionContext::IN_LOOP | ExecutionContext::BREAK)
   }
 }
