@@ -115,12 +115,39 @@ impl Parser {
   /// statement → exprStmt
   ///           | printStmt
   ///           | block ;
+  ///           | ifStmt;
   pub fn stmt(&mut self) -> ParserResult<AstNodeId> {
     match self.cur_token().kind {
       TokenKind::Print => self.print_stmt(),
       TokenKind::LBrace => self.block(),
+      TokenKind::If => self.if_stmt(),
       _ => self.expr_stmt(),
     }
+  }
+
+  /// ifStmt → "if" expression  block
+  ///           ( "else" block )? ;
+  pub fn if_stmt(&mut self) -> ParserResult<AstNodeId> {
+    let start = self.cur_span_start();
+    // Advance "if"
+    self.advance();
+    let pred = self.expression()?;
+    let conseq = self.block()?;
+    let alt = if self.advance_if_match(TokenKind::Else) {
+      self.block()?
+    } else {
+      // build a dummy empty block
+      let start = self.prev_token().span.end;
+      let end = self.prev_token().span.end;
+      let block = self.builder.start_block(start);
+      self.builder.finish_block(block, end)
+    };
+    let end = self.prev_token().span.end;
+    Ok(
+      self
+        .builder
+        .if_statement(Span::new(start, end), pred, conseq, alt),
+    )
   }
 
   /// block → "{" declaration* "}" ;

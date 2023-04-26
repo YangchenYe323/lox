@@ -15,6 +15,7 @@ pub enum Stmt<'a> {
   Print(PrintStmt<'a>),
   VarDecl(VarDecl<'a>),
   Block(Block<'a>),
+  If(IfStmt<'a>),
 }
 
 impl<'a> Stmt<'a> {
@@ -24,7 +25,11 @@ impl<'a> Stmt<'a> {
       AstNodeKind::PrintStmt => Self::Print(PrintStmt(ptr)),
       AstNodeKind::VarDecl(_) => Self::VarDecl(VarDecl(ptr)),
       AstNodeKind::Block => Self::Block(Block(ptr)),
-      _ => unreachable!(),
+      AstNodeKind::IfStmt => Self::If(IfStmt(ptr)),
+      k => {
+        println!("{:?}", k);
+        unreachable!()
+      }
     }
   }
 }
@@ -36,6 +41,7 @@ impl<'a> Spanned for Stmt<'a> {
       Stmt::Print(s) => s.span(),
       Stmt::VarDecl(s) => s.span(),
       Stmt::Block(s) => s.span(),
+      Stmt::If(s) => s.span(),
     }
   }
 }
@@ -156,6 +162,50 @@ impl<'a> Serialize for Block<'a> {
 }
 
 impl<'a> Spanned for Block<'a> {
+  fn span(&self) -> Span {
+    self.0.span()
+  }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct IfStmt<'a>(AstNodePtr<'a>);
+
+impl<'a> IfStmt<'a> {
+  pub fn pred(&self) -> Expr<'a> {
+    let ptr = self.0.nth_child(0).unwrap();
+    Expr::new(ptr)
+  }
+
+  pub fn then_block(&self) -> Stmt<'a> {
+    let ptr = self.0.nth_child(1).unwrap();
+    Stmt::new(ptr)
+  }
+
+  pub fn else_block(&self) -> Stmt<'a> {
+    let ptr = self.0.nth_child(2).unwrap();
+    Stmt::new(ptr)
+  }
+}
+
+impl<'a> Serialize for IfStmt<'a> {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: serde::Serializer,
+  {
+    let p = self.pred();
+    let t = self.then_block();
+    let e = self.else_block();
+
+    let mut state = serializer.serialize_struct("IfStmt", 3)?;
+    state.serialize_field("predicate", &p)?;
+    state.serialize_field("then", &t)?;
+    state.serialize_field("else", &e)?;
+
+    state.end()
+  }
+}
+
+impl<'a> Spanned for IfStmt<'a> {
   fn span(&self) -> Span {
     self.0.span()
   }

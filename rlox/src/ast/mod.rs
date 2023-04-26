@@ -56,6 +56,7 @@ pub enum AstNodeKind {
   ExprStmt,
   PrintStmt,
   Block,
+  IfStmt,
   // Expressions
   TernaryExpr,
   Assign,
@@ -300,6 +301,24 @@ impl SyntaxTreeBuilder {
       .span
       .end = end;
     block
+  }
+
+  pub fn if_statement(
+    &mut self,
+    span: Span,
+    pred: AstNodeId,
+    conseq: AstNodeId,
+    alt: AstNodeId,
+  ) -> AstNodeId {
+    let inner = AstNode {
+      span,
+      inner: AstNodeKind::IfStmt,
+    };
+    let if_stmt = AstNodeId::from(self.arena.new_node(inner));
+    if_stmt.append(indextree::NodeId::from(pred), &mut self.arena);
+    if_stmt.append(indextree::NodeId::from(conseq), &mut self.arena);
+    if_stmt.append(indextree::NodeId::from(alt), &mut self.arena);
+    if_stmt
   }
 
   pub fn re_span(&mut self, node: AstNodeId, new_span: Span) -> AstNodeId {

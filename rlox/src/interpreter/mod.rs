@@ -1,7 +1,7 @@
 use crate::ast::{
   facades::{
-    AssignExpr, BinaryExpr, Block, BoolLit, Expr, ExprStmt, NilLit, NumericLit, PrintStmt, Program,
-    Stmt, StringLit, TernaryExpr, UnaryExpr, Var, VarDecl,
+    AssignExpr, BinaryExpr, Block, BoolLit, Expr, ExprStmt, IfStmt, NilLit, NumericLit, PrintStmt,
+    Program, Stmt, StringLit, TernaryExpr, UnaryExpr, Var, VarDecl,
   },
   visit::AstVisitor,
 };
@@ -42,6 +42,16 @@ impl<'a> AstVisitor<'a> for Evaluator {
       Stmt::Print(stmt) => self.visit_print_statement(stmt),
       Stmt::VarDecl(stmt) => self.visit_variable_declaration(stmt),
       Stmt::Block(stmt) => self.visit_block(stmt),
+      Stmt::If(stmt) => self.visit_if_statement(stmt),
+    }
+  }
+
+  fn visit_if_statement(&mut self, if_stmt: IfStmt<'a>) -> Self::Ret {
+    let test = self.visit_expression(if_stmt.pred())?;
+    if test.is_truthful() {
+      self.visit_statement(if_stmt.then_block())
+    } else {
+      self.visit_statement(if_stmt.else_block())
     }
   }
 
