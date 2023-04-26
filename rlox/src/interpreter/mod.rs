@@ -4,11 +4,12 @@ use crate::ast::{
     Program, Stmt, StringLit, TernaryExpr, UnaryExpr, Var, VarDecl,
   },
   visit::AstVisitor,
+  BinaryOp,
 };
 
 use self::{
   diagnostics::{LoxRuntimeError, SpannedLoxRuntimeError, SpannedLoxRuntimeErrorWrapper},
-  eval::{BinaryEval, UnaryEval},
+  eval::{logical_and, logical_or, BinaryEval, UnaryEval},
   runtime::Environment,
   types::LoxValueKind,
 };
@@ -115,10 +116,24 @@ impl<'a> AstVisitor<'a> for Evaluator {
 
   fn visit_binary_expression(&mut self, binary_expr: BinaryExpr<'a>) -> Self::Ret {
     let op = binary_expr.operator();
-    let left_operand = self.visit_expression(binary_expr.left_operand())?;
-    let right_operand = self.visit_expression(binary_expr.right_operand())?;
-    op.evaluate(&left_operand, &right_operand)
-      .map_err(|e| binary_expr.wrap(e))
+    match op {
+      BinaryOp::LogicAnd => logical_and(
+        self,
+        binary_expr.left_operand(),
+        binary_expr.right_operand(),
+      ),
+      BinaryOp::LogicOr => logical_or(
+        self,
+        binary_expr.left_operand(),
+        binary_expr.right_operand(),
+      ),
+      op => {
+        let left_operand = self.visit_expression(binary_expr.left_operand())?;
+        let right_operand = self.visit_expression(binary_expr.right_operand())?;
+        op.evaluate(&left_operand, &right_operand)
+          .map_err(|e| binary_expr.wrap(e))
+      }
+    }
   }
 
   fn visit_ternary_expression(&mut self, ternary_expr: TernaryExpr<'a>) -> Self::Ret {

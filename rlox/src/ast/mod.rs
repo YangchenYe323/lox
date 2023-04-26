@@ -81,6 +81,8 @@ pub enum BinaryOp {
   Minus,
   Mult,
   Div,
+  LogicAnd,
+  LogicOr,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]

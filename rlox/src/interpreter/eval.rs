@@ -1,6 +1,10 @@
-use crate::ast::{BinaryOp, UnaryOp};
+use crate::ast::{facades::Expr, visit::AstVisitor, BinaryOp, UnaryOp};
 
-use super::{diagnostics::LoxRuntimeError, types::LoxValueKind};
+use super::{
+  diagnostics::{LoxRuntimeError, SpannedLoxRuntimeError},
+  types::LoxValueKind,
+  Evaluator,
+};
 
 pub type EvalResult<T, E = LoxRuntimeError> = std::result::Result<T, E>;
 
@@ -29,6 +33,7 @@ impl BinaryEval for BinaryOp {
       BinaryOp::Minus => sub(left_operand, right_operand),
       BinaryOp::Mult => mult(left_operand, right_operand),
       BinaryOp::Div => div(left_operand, right_operand),
+      _ => unreachable!(),
     }
   }
 }
@@ -154,6 +159,32 @@ fn greater_equals(
       left.type_name(),
       right.type_name(),
     )),
+  }
+}
+
+pub(crate) fn logical_and(
+  evaluator: &mut Evaluator,
+  left: Expr<'_>,
+  right: Expr<'_>,
+) -> Result<LoxValueKind, SpannedLoxRuntimeError> {
+  let left_value = evaluator.visit_expression(left)?;
+  if left_value.is_truthful() {
+    Ok(evaluator.visit_expression(right)?)
+  } else {
+    Ok(left_value)
+  }
+}
+
+pub(crate) fn logical_or(
+  evaluator: &mut Evaluator,
+  left: Expr<'_>,
+  right: Expr<'_>,
+) -> Result<LoxValueKind, SpannedLoxRuntimeError> {
+  let left_value = evaluator.visit_expression(left)?;
+  if !left_value.is_truthful() {
+    Ok(evaluator.visit_expression(right)?)
+  } else {
+    Ok(left_value)
   }
 }
 

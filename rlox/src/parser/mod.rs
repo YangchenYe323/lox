@@ -230,10 +230,10 @@ impl Parser {
     }
   }
 
-  /// ternary → equality ;
-  ///         | equality ? ternary : ternary;
+  /// ternary → logicOr ;
+  ///         | logicOr ? ternary : ternary;
   pub fn ternary(&mut self) -> ParserResult<AstNodeId> {
-    let base = self.equality()?;
+    let base = self.logic_or()?;
     // ternary expression
     if matches!(self.cur_token().kind, TokenKind::Question) {
       self.advance();
@@ -250,6 +250,32 @@ impl Parser {
     } else {
       Ok(base)
     }
+  }
+
+  /// logic_or → logic_and ( "or" logic_and )* ;
+  pub fn logic_or(&mut self) -> ParserResult<AstNodeId> {
+    let mut base = self.logic_and()?;
+    while matches!(self.cur_token().kind, TokenKind::Or) {
+      self.advance();
+      let operand = self.logic_and()?;
+      base = self
+        .builder
+        .binary_expression(base, BinaryOp::LogicOr, operand);
+    }
+    Ok(base)
+  }
+
+  /// logic_and  → equality ( "and" equality )* ;
+  pub fn logic_and(&mut self) -> ParserResult<AstNodeId> {
+    let mut base = self.equality()?;
+    while matches!(self.cur_token().kind, TokenKind::And) {
+      self.advance();
+      let operand = self.equality()?;
+      base = self
+        .builder
+        .binary_expression(base, BinaryOp::LogicAnd, operand);
+    }
+    Ok(base)
   }
 
   /// equality → comparison ( ( "!=" | "==" ) comparison )* ;
