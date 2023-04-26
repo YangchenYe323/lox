@@ -28,8 +28,7 @@ fn main() -> Result<()> {
 
 fn run_file(file: PathBuf, interpreter: &mut Interpreter) -> Result<()> {
   let source = std::fs::read_to_string(file.as_path()).unwrap();
-  let output = interpreter.run(&source);
-  println!("{}", output);
+  let _output = interpreter.run(&source);
   Ok(())
 }
 

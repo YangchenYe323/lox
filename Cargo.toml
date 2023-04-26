@@ -19,6 +19,7 @@ indextree = "4.6.0"
 serde = { version = "1.0.160", features = ["derive"] }
 serde_json = "1.0.96"
 bitflags = "2.2.1"
+assert_cmd = "0.11"
 
 rlox = { version = "0.1.0", path = "rlox" }
 rlox_arena = { version = "0.1.0", path = "rlox_arena" }

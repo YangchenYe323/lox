@@ -24,3 +24,6 @@ bitflags = { workspace = true }
 rlox_span = { workspace = true }
 
 colored = "2"
+
+[dev-dependencies]
+assert_cmd = { workspace = true }
