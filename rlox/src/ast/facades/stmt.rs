@@ -16,6 +16,7 @@ pub enum Stmt<'a> {
   VarDecl(VarDecl<'a>),
   Block(Block<'a>),
   If(IfStmt<'a>),
+  While(WhileStmt<'a>),
 }
 
 impl<'a> Stmt<'a> {
@@ -26,9 +27,12 @@ impl<'a> Stmt<'a> {
       AstNodeKind::VarDecl(_) => Self::VarDecl(VarDecl(ptr)),
       AstNodeKind::Block => Self::Block(Block(ptr)),
       AstNodeKind::IfStmt => Self::If(IfStmt(ptr)),
+      AstNodeKind::WhileStmt => Self::While(WhileStmt(ptr)),
       k => {
-        println!("{:?}", k);
-        unreachable!()
+        unreachable!(
+          "Shouldn't construct statement out of AST Node kind: {:?}",
+          k
+        );
       }
     }
   }
@@ -42,6 +46,7 @@ impl<'a> Spanned for Stmt<'a> {
       Stmt::VarDecl(s) => s.span(),
       Stmt::Block(s) => s.span(),
       Stmt::If(s) => s.span(),
+      Stmt::While(s) => s.span(),
     }
   }
 }
@@ -206,6 +211,43 @@ impl<'a> Serialize for IfStmt<'a> {
 }
 
 impl<'a> Spanned for IfStmt<'a> {
+  fn span(&self) -> Span {
+    self.0.span()
+  }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct WhileStmt<'a>(AstNodePtr<'a>);
+
+impl<'a> WhileStmt<'a> {
+  pub fn pred(&self) -> Expr<'a> {
+    let ptr = self.0.nth_child(0).unwrap();
+    Expr::new(ptr)
+  }
+
+  pub fn body(&self) -> Stmt<'a> {
+    let ptr = self.0.nth_child(1).unwrap();
+    Stmt::new(ptr)
+  }
+}
+
+impl<'a> Serialize for WhileStmt<'a> {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: serde::Serializer,
+  {
+    let p = self.pred();
+    let b = self.body();
+
+    let mut state = serializer.serialize_struct("WhileStmt", 2)?;
+    state.serialize_field("predicate", &p)?;
+    state.serialize_field("body", &b)?;
+
+    state.end()
+  }
+}
+
+impl<'a> Spanned for WhileStmt<'a> {
   fn span(&self) -> Span {
     self.0.span()
   }

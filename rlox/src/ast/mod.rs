@@ -57,6 +57,7 @@ pub enum AstNodeKind {
   PrintStmt,
   Block,
   IfStmt,
+  WhileStmt,
   // Expressions
   TernaryExpr,
   Assign,
@@ -110,6 +111,12 @@ impl SyntaxTree {
   pub fn root_ptr(&self) -> AstNodePtr<'_> {
     AstNodePtr::new(&self.arena, self.root)
   }
+}
+
+macro_rules! append_child {
+  ($parent:expr, $arena:expr, $($child:expr),*) => {
+      $($parent.append(indextree::NodeId::from($child), $arena);)*
+  };
 }
 
 #[derive(Default)]
@@ -346,6 +353,16 @@ impl SyntaxTreeBuilder {
     if_stmt.append(indextree::NodeId::from(conseq), &mut self.arena);
     if_stmt.append(indextree::NodeId::from(alt), &mut self.arena);
     if_stmt
+  }
+
+  pub fn while_statement(&mut self, span: Span, pred: AstNodeId, body: AstNodeId) -> AstNodeId {
+    let inner = AstNode {
+      span,
+      inner: AstNodeKind::WhileStmt,
+    };
+    let while_stmt = AstNodeId::from(self.arena.new_node(inner));
+    append_child!(while_stmt, &mut self.arena, pred, body);
+    while_stmt
   }
 
   pub fn re_span(&mut self, node: AstNodeId, new_span: Span) -> AstNodeId {

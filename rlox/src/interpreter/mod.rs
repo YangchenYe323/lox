@@ -1,7 +1,7 @@
 use crate::ast::{
   facades::{
     AssignExpr, BinaryExpr, Block, BoolLit, Expr, ExprStmt, IfStmt, LogicExpr, NilLit, NumericLit,
-    PrintStmt, Program, Stmt, StringLit, TernaryExpr, UnaryExpr, Var, VarDecl,
+    PrintStmt, Program, Stmt, StringLit, TernaryExpr, UnaryExpr, Var, VarDecl, WhileStmt,
   },
   visit::AstVisitor,
   LogicalOp,
@@ -44,7 +44,17 @@ impl<'a> AstVisitor<'a> for Evaluator {
       Stmt::VarDecl(stmt) => self.visit_variable_declaration(stmt),
       Stmt::Block(stmt) => self.visit_block(stmt),
       Stmt::If(stmt) => self.visit_if_statement(stmt),
+      Stmt::While(stmt) => self.visit_while_statement(stmt),
     }
+  }
+
+  fn visit_while_statement(&mut self, while_stmt: WhileStmt<'a>) -> Self::Ret {
+    let pred = while_stmt.pred();
+    let body = while_stmt.body();
+    while self.visit_expression(pred)?.is_truthful() {
+      self.visit_statement(body)?;
+    }
+    Ok(LoxValueKind::nil())
   }
 
   fn visit_if_statement(&mut self, if_stmt: IfStmt<'a>) -> Self::Ret {
