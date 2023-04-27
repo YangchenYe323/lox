@@ -27,3 +27,5 @@ colored = "2"
 
 [dev-dependencies]
 assert_cmd = { workspace = true }
+insta = { workspace = true }
+rlox_macros = { workspace = true }
