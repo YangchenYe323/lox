@@ -10,7 +10,7 @@ fn interpret_lox_file(path: impl AsRef<Path>) -> String {
   let path = path.as_ref();
   let mut interpreter = Command::cargo_bin("rlox").unwrap();
   let output = interpreter.arg(path).output().unwrap();
-  String::from_utf8(output.stdout).unwrap()
+  String::from_utf8_lossy(&output.stdout).into_owned()
 }
 
 fn test_source(name: &'static str) {
@@ -27,4 +27,5 @@ rlox_macros::declare_output_tests! {
   function::print,
   function::recursion,
   function::fib,
+  comp_errors::print,
 }

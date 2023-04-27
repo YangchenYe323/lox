@@ -12,7 +12,7 @@ mod parser;
 use std::borrow::Cow;
 
 use ast::{facades::Program, SyntaxTree};
-use miette::{Diagnostic, GraphicalReportHandler, Report};
+use miette::{Diagnostic, GraphicalReportHandler, GraphicalTheme, Report};
 
 use crate::{
   ast::visit::AstVisitor,
@@ -21,13 +21,26 @@ use crate::{
 };
 
 /// The interpreter that handles interpreting and executing source code.
-#[derive(Default)]
 pub struct Interpreter {
   reporter: GraphicalReportHandler,
   evaluator: Evaluator,
 }
 
+impl Default for Interpreter {
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
 impl Interpreter {
+  pub fn new() -> Self {
+    Self {
+      // Use unicode_nocolor to play nicely with writing to files
+      reporter: GraphicalReportHandler::new_themed(GraphicalTheme::unicode_nocolor()),
+      evaluator: Evaluator::default(),
+    }
+  }
+
   /// Interprete and run a lox source string
   pub fn run(&mut self, source: &'_ str) -> Cow<'static, str> {
     let parse_result = parse_source_program(source);
