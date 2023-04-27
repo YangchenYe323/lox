@@ -30,4 +30,6 @@ rlox_macros::declare_output_tests! {
   comp_errors::print,
   comp_errors::invalid_return,
   comp_errors::invalid_break,
+  comp_errors::params,
+  comp_errors::args,
 }

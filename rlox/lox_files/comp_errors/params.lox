@@ -1,0 +1,19 @@
+fun too_many_params(a, a, a, a, a, a, a, a, a,
+a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+a, a, a, a, a, a, a) {
+  return;
+}

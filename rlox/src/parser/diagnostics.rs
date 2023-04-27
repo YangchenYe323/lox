@@ -17,6 +17,8 @@ pub enum ParserError {
   ReturnOutsideFunction(#[label] Span),
   #[error("Function call can accept at most 255 arguments")]
   TooManyArguments(#[label] Span),
+  #[error("Function can have at most 255 parameters")]
+  TooManyParameters(#[label] Span),
 }
 
 pub fn unexpected_token(token: &Token) -> ParserError {

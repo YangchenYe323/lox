@@ -139,20 +139,29 @@ impl Parser {
   /// parameters → IDENTIFIER ( "," IDENTIFIER )* ;
   ///             | empty
   pub fn parameter_list(&mut self) -> ParserResult<AstNodeId> {
+    const MAX_PARAMS: u32 = 255;
+
     let start = self.cur_span_start();
     let params = self.builder.start_parameter_list(start);
     // empty
     if matches!(self.cur_token().kind, TokenKind::RParen) {
       Ok(self.builder.finish_parameter_list(params, start))
     } else {
+      let mut cnt = 0;
       loop {
         let param = self.ident_init()?;
         self.builder.add_parameter(&params, param);
+        cnt += 1;
         if !self.advance_if_match(TokenKind::Comma) {
           break;
         }
       }
       let end = self.prev_token().span.end;
+      if cnt > MAX_PARAMS {
+        self
+          .recovered_errors
+          .push(ParserError::TooManyParameters(Span::new(start, end)));
+      }
       Ok(self.builder.finish_parameter_list(params, end))
     }
   }
@@ -483,18 +492,18 @@ impl Parser {
         let argument = self.expression()?;
         self.builder.add_argument(&builder, argument);
         cnt += 1;
-        if cnt > MAX_ARGUMENTS {
-          let end: u32 = self.prev_token().span.end;
-          self
-            .recovered_errors
-            .push(ParserError::TooManyArguments(Span::new(start, end)));
-        }
         if !self.advance_if_match(TokenKind::Comma) {
           break;
         }
       }
 
       let end: u32 = self.prev_token().span.end;
+      if cnt > MAX_ARGUMENTS {
+        self
+          .recovered_errors
+          .push(ParserError::TooManyArguments(Span::new(start, end)));
+      }
+
       Ok(self.builder.finish_argument_list(builder, end))
     }
   }

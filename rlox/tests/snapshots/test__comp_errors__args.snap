@@ -1,0 +1,28 @@
+---
+source: rlox/tests/test.rs
+assertion_line: 19
+expression: output
+---
+
+  × Function call can accept at most 255 arguments
+    ╭─[1:1]
+  1 │ ╭─▶ too_many_args(a, a, a, a, a, a, a, a, a,
+  2 │ │   a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+  3 │ │   a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+  4 │ │   a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+  5 │ │   a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+  6 │ │   a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+  7 │ │   a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+  8 │ │   a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+  9 │ │   a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+ 10 │ │   a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+ 11 │ │   a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+ 12 │ │   a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+ 13 │ │   a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+ 14 │ │   a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+ 15 │ │   a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+ 16 │ │   a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+ 17 │ ╰─▶ a, a, a, a, a, a, a);
+    ╰────
+
+
