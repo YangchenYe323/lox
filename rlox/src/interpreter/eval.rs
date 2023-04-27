@@ -1,4 +1,4 @@
-use crate::ast::{facades::Expr, visit::AstVisitor, BinaryOp, UnaryOp};
+use rlox_ast::{facades::Expr, visit::AstVisitor, BinaryOp, UnaryOp};
 
 use super::{
   diagnostics::{LoxRuntimeError, SpannedLoxRuntimeError},

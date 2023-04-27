@@ -2,7 +2,7 @@ use std::str::Chars;
 
 use rlox_span::Span;
 
-use crate::ast::INTERNER;
+use rlox_ast::INTERNER;
 
 use self::tokens::{valid_ident_part, valid_ident_start, TokenKind::*};
 

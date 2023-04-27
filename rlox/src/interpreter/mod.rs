@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use bitflags::bitflags;
 
-use crate::ast::{
+use rlox_ast::{
   facades::{
     AssignExpr, BinaryExpr, Block, BoolLit, BreakStmt, CallExpr, Expr, ExprStmt, FnDecl, IfStmt,
     LogicExpr, NilLit, NumericLit, Program, ReturnStmt, Stmt, StringLit, TernaryExpr, UnaryExpr,

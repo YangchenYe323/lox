@@ -1,21 +1,20 @@
 #![warn(rust_2018_idioms)]
 #![allow(clippy::uninlined_format_args, clippy::mut_from_ref)]
-#![feature(local_key_cell_methods, negative_impls)]
+#![feature(local_key_cell_methods)]
 
 //! This crate implements a tree-walking interpreter in rust from [crafting-interpreters](https://craftinginterpreters.com/)
 
-mod ast;
 mod interpreter;
 mod lexer;
 mod parser;
 
 use std::borrow::Cow;
 
-use ast::{facades::Program, SyntaxTree};
 use miette::{Diagnostic, GraphicalReportHandler, GraphicalTheme, Report};
+use rlox_ast::visit::AstVisitor;
+use rlox_ast::{facades::Program, SyntaxTree};
 
 use crate::{
-  ast::visit::AstVisitor,
   interpreter::Evaluator,
   parser::{parse_source_program, Parse},
 };

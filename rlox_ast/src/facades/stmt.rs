@@ -3,7 +3,7 @@ use serde::{
   Serialize,
 };
 
-use crate::ast::AstNodeKind;
+use crate::AstNodeKind;
 
 use super::{AstNodePtr, Expr};
 

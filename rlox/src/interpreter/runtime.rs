@@ -4,8 +4,8 @@ use rustc_hash::FxHashMap;
 
 use rlox_span::SymbolId;
 
-use crate::ast::facades::AssignTarget;
-use crate::ast::INTERNER;
+use rlox_ast::facades::AssignTarget;
+use rlox_ast::INTERNER;
 
 use super::builtin_functions::builtin_print;
 use super::builtin_functions::builtin_time;

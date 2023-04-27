@@ -1,7 +1,7 @@
 use rlox_span::{Span, Spanned};
 use serde::{ser::SerializeSeq, Serialize};
 
-use crate::ast::AstNodeKind;
+use crate::AstNodeKind;
 
 use super::{stmt::Stmt, AstNodePtr};
 

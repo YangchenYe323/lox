@@ -5,10 +5,9 @@
 mod context;
 mod diagnostics;
 
-use crate::{
-  ast::{AstNodeId, BinaryOp, LogicalOp, SyntaxTree, SyntaxTreeBuilder, UnaryOp, INTERNER},
-  lexer::{lex_source, Lex, LexerError, Token, TokenKind},
-};
+use rlox_ast::{AstNodeId, BinaryOp, LogicalOp, SyntaxTree, SyntaxTreeBuilder, UnaryOp, INTERNER};
+
+use crate::lexer::{lex_source, Lex, LexerError, Token, TokenKind};
 
 use rlox_span::Span;
 

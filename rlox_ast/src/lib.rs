@@ -6,6 +6,8 @@
 //! The design goal is to materialize lox-specific grammar lazily so that the tree can be easily mutated for
 //! optimization.
 
+#![feature(negative_impls, local_key_cell_methods)]
+
 pub mod facades;
 pub mod visit;
 

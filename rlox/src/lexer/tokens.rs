@@ -1,6 +1,6 @@
 use rlox_span::{Span, SymbolId};
 
-use crate::ast::INTERNER;
+use rlox_ast::INTERNER;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Token {

@@ -1,6 +1,6 @@
 use std::{num::NonZeroUsize, rc::Rc};
 
-use crate::ast::{
+use rlox_ast::{
   facades::{Block, FnDecl, VarDecl},
   visit::AstVisitor,
 };
