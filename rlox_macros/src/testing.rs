@@ -14,7 +14,7 @@ impl Parse for TestFile {
 }
 
 impl TestFile {
-  pub fn to_test_fn_impl(self) -> proc_macro2::TokenStream {
+  pub fn into_test_fn_impl(self) -> proc_macro2::TokenStream {
     let components: Vec<_> = self
       .path
       .segments
@@ -50,8 +50,8 @@ impl Parse for AllTestFiles {
 }
 
 impl AllTestFiles {
-  pub fn to_test_impl(self) -> proc_macro2::TokenStream {
-    let test_impls = self.files.into_iter().map(TestFile::to_test_fn_impl);
+  pub fn into_test_impl(self) -> proc_macro2::TokenStream {
+    let test_impls = self.files.into_iter().map(TestFile::into_test_fn_impl);
     quote! {
       #(#test_impls)*
     }

@@ -13,6 +13,8 @@ pub enum ParserError {
   InvalidAssignment(#[label] Span),
   #[error("Break statement cannot be used outside of loop")]
   BreakOutsideLoop(#[label] Span),
+  #[error("Function call can accept at most 255 arguments")]
+  TooManyArguments(#[label] Span),
 }
 
 pub fn unexpected_token(token: &Token) -> ParserError {

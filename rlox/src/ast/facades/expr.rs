@@ -1,5 +1,5 @@
 use serde::{
-  ser::{SerializeStruct, SerializeTupleStruct},
+  ser::{SerializeSeq, SerializeStruct, SerializeTupleStruct},
   Serialize,
 };
 
@@ -11,6 +11,7 @@ use rlox_span::{Span, Spanned, SymbolId};
 
 #[derive(Debug, Serialize, Clone, Copy)]
 pub enum Expr<'a> {
+  Call(CallExpr<'a>),
   Assign(AssignExpr<'a>),
   Ternary(TernaryExpr<'a>),
   Logic(LogicExpr<'a>),
@@ -26,6 +27,7 @@ pub enum Expr<'a> {
 impl<'a> Spanned for Expr<'a> {
   fn span(&self) -> Span {
     match self {
+      Expr::Call(e) => e.span(),
       Expr::Ternary(e) => e.span(),
       Expr::Binary(e) => e.span(),
       Expr::Unary(e) => e.span(),
@@ -44,6 +46,7 @@ impl<'a> Expr<'a> {
   pub fn new(ptr: AstNodePtr<'a>) -> Self {
     use self::Expr::*;
     match ptr.get().inner {
+      AstNodeKind::FnCall => Call(CallExpr(ptr)),
       AstNodeKind::TernaryExpr => Ternary(TernaryExpr(ptr)),
       AstNodeKind::Assign => Assign(AssignExpr(ptr)),
       AstNodeKind::BinaryExpr(_) => Binary(BinaryExpr(ptr)),
@@ -411,5 +414,66 @@ impl<'a> Serialize for LogicExpr<'a> {
     state.serialize_field("left_operand", &left)?;
     state.serialize_field("right_operand", &right)?;
     state.end()
+  }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct CallExpr<'a>(AstNodePtr<'a>);
+
+impl<'a> CallExpr<'a> {
+  pub fn callee(&self) -> Expr<'a> {
+    Expr::new(self.0.nth_child(0).unwrap())
+  }
+
+  pub fn argument_list(&self) -> Args<'a> {
+    Args(self.0.nth_child(1).unwrap())
+  }
+}
+
+impl<'a> Serialize for CallExpr<'a> {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: serde::Serializer,
+  {
+    let mut state = serializer.serialize_struct("CallExpr", 2)?;
+    let callee = self.callee();
+    let arg_list = self.argument_list();
+    state.serialize_field("callee", &callee)?;
+    state.serialize_field("argument_list", &arg_list)?;
+    state.end()
+  }
+}
+
+impl<'a> Spanned for CallExpr<'a> {
+  fn span(&self) -> Span {
+    self.0.span()
+  }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Args<'a>(AstNodePtr<'a>);
+
+impl<'a> Args<'a> {
+  pub fn arguments(&self) -> Box<dyn Iterator<Item = Expr<'a>> + 'a> {
+    Box::new(self.0.children().map(Expr::new))
+  }
+}
+
+impl<'a> Serialize for Args<'a> {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: serde::Serializer,
+  {
+    let mut seq = serializer.serialize_seq(None)?;
+    for arg in self.arguments() {
+      seq.serialize_element(&arg)?;
+    }
+    seq.end()
+  }
+}
+
+impl<'a> Spanned for Args<'a> {
+  fn span(&self) -> Span {
+    self.0.span()
   }
 }

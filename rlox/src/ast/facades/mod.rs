@@ -16,8 +16,8 @@ use rlox_span::{Span, Spanned};
 use super::{AstNode, AstNodeId};
 
 pub use self::expr::{
-  AssignExpr, AssignTarget, BinaryExpr, BoolLit, Expr, LogicExpr, NilLit, NumericLit, StringLit,
-  TernaryExpr, UnaryExpr, Var,
+  Args, AssignExpr, AssignTarget, BinaryExpr, BoolLit, CallExpr, Expr, LogicExpr, NilLit,
+  NumericLit, StringLit, TernaryExpr, UnaryExpr, Var,
 };
 pub use self::program::Program;
 pub use self::stmt::{Block, BreakStmt, ExprStmt, IfStmt, PrintStmt, Stmt, VarDecl, WhileStmt};

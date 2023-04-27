@@ -2,8 +2,8 @@ use bitflags::bitflags;
 
 use crate::ast::{
   facades::{
-    AssignExpr, BinaryExpr, Block, BoolLit, BreakStmt, Expr, ExprStmt, IfStmt, LogicExpr, NilLit,
-    NumericLit, PrintStmt, Program, Stmt, StringLit, TernaryExpr, UnaryExpr, Var, VarDecl,
+    AssignExpr, BinaryExpr, Block, BoolLit, BreakStmt, CallExpr, Expr, ExprStmt, IfStmt, LogicExpr,
+    NilLit, NumericLit, PrintStmt, Program, Stmt, StringLit, TernaryExpr, UnaryExpr, Var, VarDecl,
     WhileStmt,
   },
   visit::AstVisitor,
@@ -118,6 +118,7 @@ impl<'a> AstVisitor<'a> for Evaluator {
 
   fn visit_expression(&mut self, expr: Expr<'a>) -> Self::Ret {
     match expr {
+      Expr::Call(e) => self.visit_call_expression(e),
       Expr::Logic(e) => self.visit_logic_expression(e),
       Expr::Assign(e) => self.visit_assignment_expression(e),
       Expr::Ternary(e) => self.visit_ternary_expression(e),
@@ -129,6 +130,10 @@ impl<'a> AstVisitor<'a> for Evaluator {
       Expr::Var(e) => self.visit_var_reference(e),
       Expr::Nil(e) => self.visit_nil(e),
     }
+  }
+
+  fn visit_call_expression(&mut self, _call_expr: CallExpr<'a>) -> Self::Ret {
+    todo!()
   }
 
   fn visit_assignment_expression(&mut self, expr: AssignExpr<'a>) -> Self::Ret {

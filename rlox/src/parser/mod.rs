@@ -1,3 +1,7 @@
+//! This module implements the grammar of the lox programming language.
+//! Operator precedences are directly encoded in the grammar and functions of [Parser]
+//! corresponds to productions in the grammar.
+
 mod diagnostics;
 
 use crate::{
@@ -374,7 +378,7 @@ impl Parser {
   }
 
   ///unary → ( "!" | "-" ) unary
-  ///        | primary ;  
+  ///        | call;  
   pub fn unary(&mut self) -> ParserResult<AstNodeId> {
     match self.cur_token().kind {
       TokenKind::Bang | TokenKind::Minus => {
@@ -389,7 +393,58 @@ impl Parser {
             .unary_expression(Span::new(start, end), op, arg),
         )
       }
-      _ => self.primary(),
+      _ => self.call(),
+    }
+  }
+
+  /// call → primary ( "(" arguments ")" )* ;
+  pub fn call(&mut self) -> ParserResult<AstNodeId> {
+    let start = self.cur_span_start();
+    let mut base = self.primary()?;
+    while self.advance_if_match(TokenKind::LParen) {
+      let arguments = self.arguments()?;
+      if !self.advance_if_match(TokenKind::RParen) {
+        return Err(unexpected_token(self.cur_token()));
+      }
+      let end = self.prev_token().span.end;
+      base = self
+        .builder
+        .function_call(Span::new(start, end), base, arguments);
+    }
+    Ok(base)
+  }
+
+  /// arguments → expression ( "," expression )*;
+  ///            | empty
+  pub fn arguments(&mut self) -> ParserResult<AstNodeId> {
+    const MAX_ARGUMENTS: u32 = 3;
+
+    let start = self.cur_span_start();
+
+    let builder = self.builder.start_argument_list(start);
+    let empty_argument = matches!(self.cur_token().kind, TokenKind::RParen);
+
+    if empty_argument {
+      Ok(self.builder.finish_argument_list(builder, start))
+    } else {
+      let mut cnt = 0;
+      loop {
+        let argument = self.expression()?;
+        self.builder.add_argument(&builder, argument);
+        cnt += 1;
+        if cnt > MAX_ARGUMENTS {
+          let end: u32 = self.prev_token().span.end;
+          self
+            .recovered_errors
+            .push(ParserError::TooManyArguments(Span::new(start, end)));
+        }
+        if !self.advance_if_match(TokenKind::Comma) {
+          break;
+        }
+      }
+
+      let end: u32 = self.prev_token().span.end;
+      Ok(self.builder.finish_argument_list(builder, end))
     }
   }
 

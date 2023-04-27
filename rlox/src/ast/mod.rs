@@ -62,6 +62,8 @@ pub enum AstNodeKind {
   // Expressions
   TernaryExpr,
   Assign,
+  FnCall,
+  CallArgList,
   BinaryExpr(BinaryOp),
   LogicExpr(LogicalOp),
   UnaryExpr(UnaryOp),
@@ -363,6 +365,43 @@ impl SyntaxTreeBuilder {
     while_stmt
   }
 
+  pub fn function_call(
+    &mut self,
+    span: Span,
+    callee: AstNodeId,
+    arguments: AstNodeId,
+  ) -> AstNodeId {
+    let inner = AstNode {
+      span,
+      inner: AstNodeKind::FnCall,
+    };
+    let call = AstNodeId::from(self.arena.new_node(inner));
+    append_child!(call, &mut self.arena, callee, arguments);
+    call
+  }
+
+  pub fn start_argument_list(&mut self, start: u32) -> ArgListBuilder {
+    let span = Span::new(start, u32::MAX);
+    let inner = AstNode {
+      span,
+      inner: AstNodeKind::CallArgList,
+    };
+    ArgListBuilder(AstNodeId::from(self.arena.new_node(inner)))
+  }
+
+  pub fn add_argument(&mut self, ArgListBuilder(node): &ArgListBuilder, arguments: AstNodeId) {
+    node.append(indextree::NodeId::from(arguments), &mut self.arena)
+  }
+
+  pub fn finish_argument_list(
+    &mut self,
+    ArgListBuilder(node): ArgListBuilder,
+    end: u32,
+  ) -> AstNodeId {
+    self.arena[indextree::NodeId::from(node)].get_mut().span.end = end;
+    node
+  }
+
   pub fn re_span(&mut self, node: AstNodeId, new_span: Span) -> AstNodeId {
     self.arena[indextree::NodeId::from(node)].get_mut().span = new_span;
     node
@@ -382,8 +421,8 @@ impl SyntaxTreeBuilder {
   }
 }
 
-#[derive(Debug)]
 pub struct ProgramBuilder(AstNodeId);
 
-#[derive(Debug)]
 pub struct BlockBuilder(AstNodeId);
+
+pub struct ArgListBuilder(AstNodeId);
