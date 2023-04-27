@@ -14,7 +14,7 @@ fn interpret_lox_file(path: impl AsRef<Path>) -> String {
 }
 
 fn test_source(name: &'static str) {
-  let path = PathBuf::from(TEST_ROOT).join(format!("{}.lox", name));
+  let path = PathBuf::from(TEST_ROOT).join(format!("{name}.lox"));
   let output = interpret_lox_file(&path);
   insta::assert_snapshot!(name, output);
 }

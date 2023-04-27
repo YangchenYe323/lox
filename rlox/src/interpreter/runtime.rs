@@ -61,7 +61,7 @@ impl Environment {
 
   /// l-value corresponds to the object_id associated with the assignment target, which is
   /// roughly the memory address that can be written to for assigning to this variable.
-  pub fn get_lvalue(&mut self, target: AssignTarget<'_>) -> Option<ObjectId> {
+  pub fn get_lvalue(&mut self, target: AssignTarget) -> Option<ObjectId> {
     match target {
       AssignTarget::Ident(var) => {
         let symbol = var.var_symbol();

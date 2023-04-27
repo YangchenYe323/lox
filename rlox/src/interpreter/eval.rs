@@ -165,8 +165,8 @@ fn greater_equals(
 
 pub(crate) fn logical_and(
   evaluator: &mut Evaluator,
-  left: Expr<'_>,
-  right: Expr<'_>,
+  left: Expr,
+  right: Expr,
 ) -> Result<LoxValueKind, SpannedLoxRuntimeError> {
   let left_value = evaluator.visit_expression(left)?;
   if left_value.is_truthful() {
@@ -178,8 +178,8 @@ pub(crate) fn logical_and(
 
 pub(crate) fn logical_or(
   evaluator: &mut Evaluator,
-  left: Expr<'_>,
-  right: Expr<'_>,
+  left: Expr,
+  right: Expr,
 ) -> Result<LoxValueKind, SpannedLoxRuntimeError> {
   let left_value = evaluator.visit_expression(left)?;
   if !left_value.is_truthful() {

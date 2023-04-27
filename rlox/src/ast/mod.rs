@@ -13,6 +13,8 @@ use std::ops::Deref;
 
 use serde::Serialize;
 
+use crate::NODE_ARENA;
+
 use self::facades::AstNodePtr;
 
 use rlox_span::{Span, SymbolId};
@@ -40,13 +42,13 @@ impl Deref for AstNodeId {
   }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AstNode {
   span: Span,
   inner: AstNodeKind,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum AstNodeKind {
   // Program
   Program,
@@ -101,34 +103,37 @@ pub enum UnaryOp {
 
 #[derive(Debug)]
 pub struct SyntaxTree {
-  arena: indextree::Arena<AstNode>,
   root: AstNodeId,
 }
 
 impl SyntaxTree {
-  pub fn new(arena: indextree::Arena<AstNode>, root: AstNodeId) -> Self {
-    Self { arena, root }
+  pub fn new(root: AstNodeId) -> Self {
+    Self { root }
   }
 
-  pub fn root_ptr(&self) -> AstNodePtr<'_> {
-    AstNodePtr::new(&self.arena, self.root)
+  pub fn root_ptr(&self) -> AstNodePtr {
+    AstNodePtr::new(self.root)
   }
 }
 
 macro_rules! append_child {
-  ($parent:expr, $arena:expr, $($child:expr),*) => {
-      $($parent.append(indextree::NodeId::from($child), $arena);)*
+  ($parent:expr, $($child:expr),*) => {
+      $(NODE_ARENA.with_borrow_mut(|arena| {
+        $parent.append(indextree::NodeId::from($child), arena);
+      });)*
   };
 }
 
 #[derive(Default)]
-pub struct SyntaxTreeBuilder {
-  pub arena: indextree::Arena<AstNode>,
-}
+pub struct SyntaxTreeBuilder;
 
 impl SyntaxTreeBuilder {
+  pub fn new_node(&self, inner: AstNode) -> AstNodeId {
+    AstNodeId::from(NODE_ARENA.with_borrow_mut(|arena| arena.new_node(inner)))
+  }
+
   pub fn finish(self, root: AstNodeId) -> SyntaxTree {
-    SyntaxTree::new(self.arena, root)
+    SyntaxTree::new(root)
   }
 
   pub fn string_literal(&mut self, span: Span, raw: SymbolId, value: &'static str) -> AstNodeId {
@@ -136,7 +141,7 @@ impl SyntaxTreeBuilder {
       span,
       inner: AstNodeKind::StrLiteral(raw, value),
     };
-    AstNodeId::from(self.arena.new_node(inner))
+    self.new_node(inner)
   }
 
   pub fn numeric_literal(&mut self, span: Span, raw: SymbolId, value: f64) -> AstNodeId {
@@ -144,7 +149,7 @@ impl SyntaxTreeBuilder {
       span,
       inner: AstNodeKind::NumLiteral(raw, value),
     };
-    AstNodeId::from(self.arena.new_node(inner))
+    self.new_node(inner)
   }
 
   pub fn bool_literal(&mut self, span: Span, value: bool) -> AstNodeId {
@@ -152,7 +157,7 @@ impl SyntaxTreeBuilder {
       span,
       inner: AstNodeKind::BoolLiteral(value),
     };
-    AstNodeId::from(self.arena.new_node(inner))
+    self.new_node(inner)
   }
 
   pub fn nil(&mut self, span: Span) -> AstNodeId {
@@ -160,7 +165,7 @@ impl SyntaxTreeBuilder {
       span,
       inner: AstNodeKind::Nil,
     };
-    AstNodeId::from(self.arena.new_node(inner))
+    self.new_node(inner)
   }
 
   pub fn logical_expression(
@@ -177,8 +182,8 @@ impl SyntaxTreeBuilder {
       inner: AstNodeKind::LogicExpr(op),
     };
 
-    let logical_expr = AstNodeId::from(self.arena.new_node(inner));
-    append_child!(logical_expr, &mut self.arena, left, right);
+    let logical_expr = self.new_node(inner);
+    append_child!(logical_expr, left, right);
     logical_expr
   }
 
@@ -196,8 +201,8 @@ impl SyntaxTreeBuilder {
       inner: AstNodeKind::BinaryExpr(op),
     };
 
-    let binary_expr = AstNodeId::from(self.arena.new_node(inner));
-    append_child!(binary_expr, &mut self.arena, left, right);
+    let binary_expr = self.new_node(inner);
+    append_child!(binary_expr, left, right);
     binary_expr
   }
 
@@ -207,8 +212,8 @@ impl SyntaxTreeBuilder {
       inner: AstNodeKind::UnaryExpr(op),
     };
 
-    let unary_expr = AstNodeId::from(self.arena.new_node(inner));
-    append_child!(unary_expr, &mut self.arena, arg);
+    let unary_expr = self.new_node(inner);
+    append_child!(unary_expr, arg);
     unary_expr
   }
 
@@ -225,8 +230,8 @@ impl SyntaxTreeBuilder {
       inner: AstNodeKind::TernaryExpr,
     };
 
-    let ternary = AstNodeId::from(self.arena.new_node(inner));
-    append_child!(ternary, &mut self.arena, pred, conseq, alt);
+    let ternary = self.new_node(inner);
+    append_child!(ternary, pred, conseq, alt);
 
     ternary
   }
@@ -236,8 +241,8 @@ impl SyntaxTreeBuilder {
       span,
       inner: AstNodeKind::ExprStmt,
     };
-    let stmt = AstNodeId::from(self.arena.new_node(inner));
-    append_child!(stmt, &mut self.arena, expr);
+    let stmt = self.new_node(inner);
+    append_child!(stmt, expr);
 
     stmt
   }
@@ -247,17 +252,19 @@ impl SyntaxTreeBuilder {
       span: Span::new(start, u32::MAX),
       inner: AstNodeKind::Program,
     };
-    ProgramBuilder(AstNodeId::from(self.arena.new_node(inner)))
+    ProgramBuilder(self.new_node(inner))
   }
 
   pub fn add_statement(&mut self, ProgramBuilder(program): &ProgramBuilder, stmt: AstNodeId) {
-    append_child!(program, &mut self.arena, stmt);
+    append_child!(program, stmt);
   }
 
   pub fn finish_program(&mut self, ProgramBuilder(program): ProgramBuilder, end: u32) -> AstNodeId {
-    let node = &mut self.arena[indextree::NodeId::from(program)];
-    node.get_mut().span.end = end;
-    program
+    NODE_ARENA.with_borrow_mut(|arena| {
+      let node = &mut arena[indextree::NodeId::from(program)];
+      node.get_mut().span.end = end;
+      program
+    })
   }
 
   pub fn variable_declaration(
@@ -270,8 +277,8 @@ impl SyntaxTreeBuilder {
       span,
       inner: AstNodeKind::VarDecl(variable),
     };
-    let decl = AstNodeId::from(self.arena.new_node(inner));
-    append_child!(decl, &mut self.arena, init);
+    let decl = self.new_node(inner);
+    append_child!(decl, init);
     decl
   }
 
@@ -280,7 +287,7 @@ impl SyntaxTreeBuilder {
       span,
       inner: AstNodeKind::Var(variable),
     };
-    AstNodeId::from(self.arena.new_node(inner))
+    self.new_node(inner)
   }
 
   pub fn assignment_expression(
@@ -293,8 +300,8 @@ impl SyntaxTreeBuilder {
       span,
       inner: AstNodeKind::Assign,
     };
-    let assign = AstNodeId::from(self.arena.new_node(inner));
-    append_child!(assign, &mut self.arena, target, value);
+    let assign = self.new_node(inner);
+    append_child!(assign, target, value);
     assign
   }
 
@@ -303,20 +310,20 @@ impl SyntaxTreeBuilder {
       span: Span::new(start, u32::MAX),
       inner: AstNodeKind::Block,
     };
-    BlockBuilder(AstNodeId::from(self.arena.new_node(inner)))
+    BlockBuilder(self.new_node(inner))
   }
 
   pub fn add_block_statement(&mut self, builder: &BlockBuilder, stmt: AstNodeId) {
     let BlockBuilder(block_id) = builder;
-    append_child!(block_id, &mut self.arena, stmt);
+    append_child!(block_id, stmt);
   }
 
   pub fn finish_block(&mut self, BlockBuilder(block): BlockBuilder, end: u32) -> AstNodeId {
-    self.arena[indextree::NodeId::from(block)]
-      .get_mut()
-      .span
-      .end = end;
-    block
+    NODE_ARENA.with_borrow_mut(|arena| {
+      let node = &mut arena[indextree::NodeId::from(block)];
+      node.get_mut().span.end = end;
+      block
+    })
   }
 
   pub fn break_statement(&mut self, span: Span) -> AstNodeId {
@@ -324,7 +331,7 @@ impl SyntaxTreeBuilder {
       span,
       inner: AstNodeKind::Break,
     };
-    AstNodeId::from(self.arena.new_node(inner))
+    self.new_node(inner)
   }
 
   pub fn if_statement(
@@ -338,8 +345,8 @@ impl SyntaxTreeBuilder {
       span,
       inner: AstNodeKind::IfStmt,
     };
-    let if_stmt = AstNodeId::from(self.arena.new_node(inner));
-    append_child!(if_stmt, &mut self.arena, pred, conseq, alt);
+    let if_stmt = self.new_node(inner);
+    append_child!(if_stmt, pred, conseq, alt);
     if_stmt
   }
 
@@ -348,8 +355,8 @@ impl SyntaxTreeBuilder {
       span,
       inner: AstNodeKind::WhileStmt,
     };
-    let while_stmt = AstNodeId::from(self.arena.new_node(inner));
-    append_child!(while_stmt, &mut self.arena, pred, body);
+    let while_stmt = self.new_node(inner);
+    append_child!(while_stmt, pred, body);
     while_stmt
   }
 
@@ -363,8 +370,8 @@ impl SyntaxTreeBuilder {
       span,
       inner: AstNodeKind::FnCall,
     };
-    let call = AstNodeId::from(self.arena.new_node(inner));
-    append_child!(call, &mut self.arena, callee, arguments);
+    let call = self.new_node(inner);
+    append_child!(call, callee, arguments);
     call
   }
 
@@ -374,38 +381,49 @@ impl SyntaxTreeBuilder {
       span,
       inner: AstNodeKind::CallArgList,
     };
-    ArgListBuilder(AstNodeId::from(self.arena.new_node(inner)))
+    ArgListBuilder(self.new_node(inner))
   }
 
   pub fn add_argument(&mut self, ArgListBuilder(node): &ArgListBuilder, arguments: AstNodeId) {
-    node.append(indextree::NodeId::from(arguments), &mut self.arena)
+    append_child!(node, arguments);
   }
 
   pub fn finish_argument_list(
     &mut self,
-    ArgListBuilder(node): ArgListBuilder,
+    ArgListBuilder(arguments): ArgListBuilder,
     end: u32,
   ) -> AstNodeId {
-    self.arena[indextree::NodeId::from(node)].get_mut().span.end = end;
-    node
+    NODE_ARENA.with_borrow_mut(|arena| {
+      let node = &mut arena[indextree::NodeId::from(arguments)];
+      node.get_mut().span.end = end;
+      arguments
+    })
   }
 
-  pub fn re_span(&mut self, node: AstNodeId, new_span: Span) -> AstNodeId {
-    self.arena[indextree::NodeId::from(node)].get_mut().span = new_span;
-    node
+  pub fn re_span(&mut self, node_id: AstNodeId, new_span: Span) -> AstNodeId {
+    NODE_ARENA.with_borrow_mut(|arena| {
+      let node = &mut arena[indextree::NodeId::from(node_id)];
+      node.get_mut().span = new_span;
+      node_id
+    })
   }
 
   pub fn get_span(&self, id: AstNodeId) -> Span {
-    self.arena[indextree::NodeId::from(id)].get().span
+    NODE_ARENA.with_borrow(|arena| {
+      let node = &arena[indextree::NodeId::from(id)];
+      node.get().span
+    })
   }
 
   #[allow(clippy::match_like_matches_macro)]
-  pub fn valid_assign_target(&self, node: AstNodeId) -> bool {
-    let node = &self.arena[indextree::NodeId::from(node)];
-    match &node.get().inner {
-      AstNodeKind::Var(_) => true,
-      _ => false,
-    }
+  pub fn valid_assign_target(&self, node_id: AstNodeId) -> bool {
+    NODE_ARENA.with_borrow(|arena| {
+      let node = &arena[indextree::NodeId::from(node_id)];
+      match &node.get().inner {
+        AstNodeKind::Var(_) => true,
+        _ => false,
+      }
+    })
   }
 }
 

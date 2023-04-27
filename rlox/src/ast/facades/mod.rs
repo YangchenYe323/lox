@@ -13,6 +13,8 @@ mod stmt;
 
 use rlox_span::{Span, Spanned};
 
+use crate::NODE_ARENA;
+
 use super::{AstNode, AstNodeId};
 
 pub use self::expr::{
@@ -22,41 +24,42 @@ pub use self::expr::{
 pub use self::program::Program;
 pub use self::stmt::{Block, BreakStmt, ExprStmt, IfStmt, Stmt, VarDecl, WhileStmt};
 
-/// A shared reference of an [AstNode], which packs together the arena
-/// and the id.
 #[derive(Debug, Clone, Copy)]
-pub struct AstNodePtr<'a> {
-  pub arena: &'a indextree::Arena<AstNode>,
+pub struct AstNodePtr {
   pub cursor: AstNodeId,
 }
 
-impl<'a> Spanned for AstNodePtr<'a> {
+impl Spanned for AstNodePtr {
   fn span(&self) -> Span {
     self.get().span
   }
 }
 
-impl<'a> AstNodePtr<'a> {
-  pub fn new(arena: &'a indextree::Arena<AstNode>, cursor: AstNodeId) -> Self {
-    Self { arena, cursor }
+impl AstNodePtr {
+  pub fn new(cursor: AstNodeId) -> Self {
+    Self { cursor }
   }
 
-  pub fn get(&self) -> &AstNode {
-    self.arena[self.cursor.into()].get()
+  pub fn get(&self) -> AstNode {
+    NODE_ARENA.with_borrow(|arena| arena[self.cursor.into()].get().clone())
   }
 
   /// Nth child of the current node, 0-indexed
-  pub fn nth_child(&self, n: usize) -> Option<AstNodePtr<'a>> {
-    let mut it = self.cursor.children(self.arena).skip(n);
-    it.next()
-      .map(|id| Self::new(self.arena, AstNodeId::from(id)))
+  pub fn nth_child(&self, n: usize) -> Option<AstNodePtr> {
+    NODE_ARENA.with_borrow(|arena| {
+      let mut it = self.cursor.children(arena).skip(n);
+      it.next().map(|id| Self::new(AstNodeId::from(id)))
+    })
   }
 
-  pub fn children(&self) -> Box<dyn Iterator<Item = AstNodePtr<'a>> + 'a> {
-    let iter = self
-      .cursor
-      .children(self.arena)
-      .map(|id| AstNodePtr::new(self.arena, AstNodeId::from(id)));
-    Box::new(iter)
+  pub fn children(&self) -> impl Iterator<Item = AstNodePtr> {
+    NODE_ARENA.with_borrow(|arena| {
+      self
+        .cursor
+        .children(arena)
+        .map(|id| AstNodePtr::new(AstNodeId::from(id)))
+        .collect::<Vec<_>>()
+        .into_iter()
+    })
   }
 }

@@ -46,10 +46,10 @@ impl Evaluator {
   }
 }
 
-impl<'a> AstVisitor<'a> for Evaluator {
+impl AstVisitor for Evaluator {
   type Ret = Result<LoxValueKind, SpannedLoxRuntimeError>;
 
-  fn visit_program(&mut self, program: Program<'a>) -> Self::Ret {
+  fn visit_program(&mut self, program: Program) -> Self::Ret {
     let mut value = LoxValueKind::nil();
     for stmt in program.stmts() {
       value = self.visit_statement(stmt)?;
@@ -58,7 +58,7 @@ impl<'a> AstVisitor<'a> for Evaluator {
     Ok(value)
   }
 
-  fn visit_statement(&mut self, stmt: Stmt<'a>) -> Self::Ret {
+  fn visit_statement(&mut self, stmt: Stmt) -> Self::Ret {
     match stmt {
       Stmt::Expr(stmt) => self.visit_expression_statement(stmt),
       Stmt::VarDecl(stmt) => self.visit_variable_declaration(stmt),
@@ -69,12 +69,12 @@ impl<'a> AstVisitor<'a> for Evaluator {
     }
   }
 
-  fn visit_break_statement(&mut self, _break_stmt: BreakStmt<'a>) -> Self::Ret {
+  fn visit_break_statement(&mut self, _break_stmt: BreakStmt) -> Self::Ret {
     self.context |= ExecutionContext::BREAK;
     Ok(LoxValueKind::nil())
   }
 
-  fn visit_while_statement(&mut self, while_stmt: WhileStmt<'a>) -> Self::Ret {
+  fn visit_while_statement(&mut self, while_stmt: WhileStmt) -> Self::Ret {
     self.with_context(ExecutionContext::IN_LOOP, |parser| {
       let pred = while_stmt.pred();
       let body = while_stmt.body();
@@ -88,7 +88,7 @@ impl<'a> AstVisitor<'a> for Evaluator {
     })
   }
 
-  fn visit_if_statement(&mut self, if_stmt: IfStmt<'a>) -> Self::Ret {
+  fn visit_if_statement(&mut self, if_stmt: IfStmt) -> Self::Ret {
     let test = self.visit_expression(if_stmt.pred())?;
     if test.is_truthful() {
       self.visit_statement(if_stmt.then_block())
@@ -97,7 +97,7 @@ impl<'a> AstVisitor<'a> for Evaluator {
     }
   }
 
-  fn visit_variable_declaration(&mut self, var_decl: VarDecl<'a>) -> Self::Ret {
+  fn visit_variable_declaration(&mut self, var_decl: VarDecl) -> Self::Ret {
     let symbol = var_decl.var_symbol();
     let init = if let Some(expr) = var_decl.init_expr() {
       self.visit_expression(expr)?
@@ -108,12 +108,12 @@ impl<'a> AstVisitor<'a> for Evaluator {
     Ok(LoxValueKind::nil())
   }
 
-  fn visit_expression_statement(&mut self, expr_stmt: ExprStmt<'a>) -> Self::Ret {
+  fn visit_expression_statement(&mut self, expr_stmt: ExprStmt) -> Self::Ret {
     let expr = self.visit_expression(expr_stmt.expr())?;
     Ok(expr)
   }
 
-  fn visit_block(&mut self, block: Block<'a>) -> Self::Ret {
+  fn visit_block(&mut self, block: Block) -> Self::Ret {
     self.environment.enter_scope();
     let mut value = LoxValueKind::nil();
     for stmt in block.statements() {
@@ -126,7 +126,7 @@ impl<'a> AstVisitor<'a> for Evaluator {
     Ok(value)
   }
 
-  fn visit_expression(&mut self, expr: Expr<'a>) -> Self::Ret {
+  fn visit_expression(&mut self, expr: Expr) -> Self::Ret {
     match expr {
       Expr::Call(e) => self.visit_call_expression(e),
       Expr::Logic(e) => self.visit_logic_expression(e),
@@ -142,7 +142,7 @@ impl<'a> AstVisitor<'a> for Evaluator {
     }
   }
 
-  fn visit_call_expression(&mut self, call_expr: CallExpr<'a>) -> Self::Ret {
+  fn visit_call_expression(&mut self, call_expr: CallExpr) -> Self::Ret {
     let callee = self.visit_expression(call_expr.callee())?;
     match callee {
       LoxValueKind::Callable(c) => {
@@ -156,7 +156,7 @@ impl<'a> AstVisitor<'a> for Evaluator {
     }
   }
 
-  fn visit_assignment_expression(&mut self, expr: AssignExpr<'a>) -> Self::Ret {
+  fn visit_assignment_expression(&mut self, expr: AssignExpr) -> Self::Ret {
     let target = expr.target();
     let value = expr.value();
     let target = self
@@ -168,7 +168,7 @@ impl<'a> AstVisitor<'a> for Evaluator {
     Ok(value)
   }
 
-  fn visit_binary_expression(&mut self, binary_expr: BinaryExpr<'a>) -> Self::Ret {
+  fn visit_binary_expression(&mut self, binary_expr: BinaryExpr) -> Self::Ret {
     let op = binary_expr.operator();
 
     let left_operand = self.visit_expression(binary_expr.left_operand())?;
@@ -177,7 +177,7 @@ impl<'a> AstVisitor<'a> for Evaluator {
       .map_err(|e| binary_expr.wrap(e))
   }
 
-  fn visit_logic_expression(&mut self, logic_expr: LogicExpr<'a>) -> Self::Ret {
+  fn visit_logic_expression(&mut self, logic_expr: LogicExpr) -> Self::Ret {
     let op = logic_expr.operator();
     let left = logic_expr.left_operand();
     let right = logic_expr.right_operand();
@@ -187,7 +187,7 @@ impl<'a> AstVisitor<'a> for Evaluator {
     }
   }
 
-  fn visit_ternary_expression(&mut self, ternary_expr: TernaryExpr<'a>) -> Self::Ret {
+  fn visit_ternary_expression(&mut self, ternary_expr: TernaryExpr) -> Self::Ret {
     let test = self.visit_expression(ternary_expr.predicate())?;
     match test.is_truthful() {
       true => self.visit_expression(ternary_expr.consequence()),
@@ -195,25 +195,25 @@ impl<'a> AstVisitor<'a> for Evaluator {
     }
   }
 
-  fn visit_string_literal(&mut self, string_literal: StringLit<'a>) -> Self::Ret {
+  fn visit_string_literal(&mut self, string_literal: StringLit) -> Self::Ret {
     Ok(LoxValueKind::String(string_literal.value().to_string()))
   }
 
-  fn visit_numeric_literal(&mut self, numeric_literal: NumericLit<'a>) -> Self::Ret {
+  fn visit_numeric_literal(&mut self, numeric_literal: NumericLit) -> Self::Ret {
     Ok(LoxValueKind::Number(numeric_literal.value()))
   }
 
-  fn visit_unary_expression(&mut self, unary_expr: UnaryExpr<'a>) -> Self::Ret {
+  fn visit_unary_expression(&mut self, unary_expr: UnaryExpr) -> Self::Ret {
     let op = unary_expr.operator();
     let operand = self.visit_expression(unary_expr.arg())?;
     op.evaluate(&operand).map_err(|e| unary_expr.wrap(e))
   }
 
-  fn visit_bool_literal(&mut self, bool_literal: BoolLit<'a>) -> Self::Ret {
+  fn visit_bool_literal(&mut self, bool_literal: BoolLit) -> Self::Ret {
     Ok(LoxValueKind::Boolean(bool_literal.value()))
   }
 
-  fn visit_var_reference(&mut self, var_reference: Var<'a>) -> Self::Ret {
+  fn visit_var_reference(&mut self, var_reference: Var) -> Self::Ret {
     let reference = var_reference.var_symbol();
     self
       .environment
@@ -221,7 +221,7 @@ impl<'a> AstVisitor<'a> for Evaluator {
       .ok_or_else(|| var_reference.wrap(LoxRuntimeError::UnresolvedReference))
   }
 
-  fn visit_nil(&mut self, _nil: NilLit<'a>) -> Self::Ret {
+  fn visit_nil(&mut self, _nil: NilLit) -> Self::Ret {
     Ok(LoxValueKind::nil())
   }
 }

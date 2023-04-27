@@ -10,21 +10,21 @@ use super::AstNodePtr;
 use rlox_span::{Span, Spanned, SymbolId};
 
 #[derive(Debug, Serialize, Clone, Copy)]
-pub enum Expr<'a> {
-  Call(CallExpr<'a>),
-  Assign(AssignExpr<'a>),
-  Ternary(TernaryExpr<'a>),
-  Logic(LogicExpr<'a>),
-  Binary(BinaryExpr<'a>),
-  Unary(UnaryExpr<'a>),
-  String(StringLit<'a>),
-  Number(NumericLit<'a>),
-  Bool(BoolLit<'a>),
-  Var(Var<'a>),
-  Nil(NilLit<'a>),
+pub enum Expr {
+  Call(CallExpr),
+  Assign(AssignExpr),
+  Ternary(TernaryExpr),
+  Logic(LogicExpr),
+  Binary(BinaryExpr),
+  Unary(UnaryExpr),
+  String(StringLit),
+  Number(NumericLit),
+  Bool(BoolLit),
+  Var(Var),
+  Nil(NilLit),
 }
 
-impl<'a> Spanned for Expr<'a> {
+impl Spanned for Expr {
   fn span(&self) -> Span {
     match self {
       Expr::Call(e) => e.span(),
@@ -42,8 +42,8 @@ impl<'a> Spanned for Expr<'a> {
   }
 }
 
-impl<'a> Expr<'a> {
-  pub fn new(ptr: AstNodePtr<'a>) -> Self {
+impl Expr {
+  pub fn new(ptr: AstNodePtr) -> Self {
     use self::Expr::*;
     match ptr.get().inner {
       AstNodeKind::FnCall => Call(CallExpr(ptr)),
@@ -63,9 +63,9 @@ impl<'a> Expr<'a> {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct BinaryExpr<'a>(AstNodePtr<'a>);
+pub struct BinaryExpr(AstNodePtr);
 
-impl<'a> BinaryExpr<'a> {
+impl BinaryExpr {
   pub fn operator(&self) -> BinaryOp {
     match &self.0.get().inner {
       AstNodeKind::BinaryExpr(op) => *op,
@@ -73,24 +73,24 @@ impl<'a> BinaryExpr<'a> {
     }
   }
 
-  pub fn left_operand(&self) -> Expr<'a> {
+  pub fn left_operand(&self) -> Expr {
     let left = self.0.nth_child(0).unwrap();
     Expr::new(left)
   }
 
-  pub fn right_operand(&self) -> Expr<'a> {
+  pub fn right_operand(&self) -> Expr {
     let right = self.0.nth_child(1).unwrap();
     Expr::new(right)
   }
 }
 
-impl<'a> Spanned for BinaryExpr<'a> {
+impl Spanned for BinaryExpr {
   fn span(&self) -> Span {
     self.0.span()
   }
 }
 
-impl<'a> Serialize for BinaryExpr<'a> {
+impl Serialize for BinaryExpr {
   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
   where
     S: serde::Serializer,
@@ -107,28 +107,28 @@ impl<'a> Serialize for BinaryExpr<'a> {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct UnaryExpr<'a>(AstNodePtr<'a>);
+pub struct UnaryExpr(AstNodePtr);
 
-impl<'a> UnaryExpr<'a> {
+impl UnaryExpr {
   pub fn operator(&self) -> UnaryOp {
     let node = self.0.get();
     let AstNodeKind::UnaryExpr(op) = &node.inner else { unreachable!() };
     *op
   }
 
-  pub fn arg(&self) -> Expr<'a> {
+  pub fn arg(&self) -> Expr {
     let arg = self.0.nth_child(0).unwrap();
     Expr::new(arg)
   }
 }
 
-impl<'a> Spanned for UnaryExpr<'a> {
+impl Spanned for UnaryExpr {
   fn span(&self) -> Span {
     self.0.span()
   }
 }
 
-impl<'a> Serialize for UnaryExpr<'a> {
+impl Serialize for UnaryExpr {
   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
   where
     S: serde::Serializer,
@@ -143,9 +143,9 @@ impl<'a> Serialize for UnaryExpr<'a> {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct StringLit<'a>(AstNodePtr<'a>);
+pub struct StringLit(AstNodePtr);
 
-impl<'a> StringLit<'a> {
+impl StringLit {
   pub fn value(&self) -> &'static str {
     let node = self.0.get();
     match node.inner {
@@ -155,13 +155,13 @@ impl<'a> StringLit<'a> {
   }
 }
 
-impl<'a> Spanned for StringLit<'a> {
+impl Spanned for StringLit {
   fn span(&self) -> Span {
     self.0.span()
   }
 }
 
-impl<'a> Serialize for StringLit<'a> {
+impl Serialize for StringLit {
   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
   where
     S: serde::Serializer,
@@ -173,9 +173,9 @@ impl<'a> Serialize for StringLit<'a> {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct NumericLit<'a>(AstNodePtr<'a>);
+pub struct NumericLit(AstNodePtr);
 
-impl<'a> NumericLit<'a> {
+impl NumericLit {
   pub fn value(&self) -> f64 {
     let node = self.0.get();
     match node.inner {
@@ -185,13 +185,13 @@ impl<'a> NumericLit<'a> {
   }
 }
 
-impl<'a> Spanned for NumericLit<'a> {
+impl Spanned for NumericLit {
   fn span(&self) -> Span {
     self.0.span()
   }
 }
 
-impl<'a> Serialize for NumericLit<'a> {
+impl Serialize for NumericLit {
   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
   where
     S: serde::Serializer,
@@ -203,9 +203,9 @@ impl<'a> Serialize for NumericLit<'a> {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct BoolLit<'a>(AstNodePtr<'a>);
+pub struct BoolLit(AstNodePtr);
 
-impl<'a> BoolLit<'a> {
+impl BoolLit {
   pub fn value(&self) -> bool {
     let node = self.0.get();
     match node.inner {
@@ -215,13 +215,13 @@ impl<'a> BoolLit<'a> {
   }
 }
 
-impl<'a> Spanned for BoolLit<'a> {
+impl Spanned for BoolLit {
   fn span(&self) -> Span {
     self.0.span()
   }
 }
 
-impl<'a> Serialize for BoolLit<'a> {
+impl Serialize for BoolLit {
   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
   where
     S: serde::Serializer,
@@ -233,15 +233,15 @@ impl<'a> Serialize for BoolLit<'a> {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct NilLit<'a>(AstNodePtr<'a>);
+pub struct NilLit(AstNodePtr);
 
-impl<'a> Spanned for NilLit<'a> {
+impl Spanned for NilLit {
   fn span(&self) -> Span {
     self.0.span()
   }
 }
 
-impl<'a> Serialize for NilLit<'a> {
+impl Serialize for NilLit {
   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
   where
     S: serde::Serializer,
@@ -251,32 +251,32 @@ impl<'a> Serialize for NilLit<'a> {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct TernaryExpr<'a>(AstNodePtr<'a>);
+pub struct TernaryExpr(AstNodePtr);
 
-impl<'a> TernaryExpr<'a> {
-  pub fn predicate(&self) -> Expr<'a> {
+impl TernaryExpr {
+  pub fn predicate(&self) -> Expr {
     let ptr = self.0.nth_child(0).unwrap();
     Expr::new(ptr)
   }
 
-  pub fn consequence(&self) -> Expr<'a> {
+  pub fn consequence(&self) -> Expr {
     let ptr = self.0.nth_child(1).unwrap();
     Expr::new(ptr)
   }
 
-  pub fn alternative(&self) -> Expr<'a> {
+  pub fn alternative(&self) -> Expr {
     let ptr = self.0.nth_child(2).unwrap();
     Expr::new(ptr)
   }
 }
 
-impl<'a> Spanned for TernaryExpr<'a> {
+impl Spanned for TernaryExpr {
   fn span(&self) -> Span {
     self.0.span()
   }
 }
 
-impl<'a> Serialize for TernaryExpr<'a> {
+impl Serialize for TernaryExpr {
   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
   where
     S: serde::Serializer,
@@ -294,9 +294,9 @@ impl<'a> Serialize for TernaryExpr<'a> {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Var<'a>(AstNodePtr<'a>);
+pub struct Var(AstNodePtr);
 
-impl<'a> Var<'a> {
+impl Var {
   pub fn var_symbol(&self) -> SymbolId {
     let node = self.0.get();
     match &node.inner {
@@ -306,7 +306,7 @@ impl<'a> Var<'a> {
   }
 }
 
-impl<'a> Serialize for Var<'a> {
+impl Serialize for Var {
   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
   where
     S: serde::Serializer,
@@ -318,28 +318,28 @@ impl<'a> Serialize for Var<'a> {
   }
 }
 
-impl<'a> Spanned for Var<'a> {
+impl Spanned for Var {
   fn span(&self) -> Span {
     self.0.span()
   }
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct AssignExpr<'a>(AstNodePtr<'a>);
+pub struct AssignExpr(AstNodePtr);
 
-impl<'a> AssignExpr<'a> {
-  pub fn target(&self) -> AssignTarget<'a> {
+impl AssignExpr {
+  pub fn target(&self) -> AssignTarget {
     let ptr = self.0.nth_child(0).unwrap();
     AssignTarget::new(ptr)
   }
 
-  pub fn value(&self) -> Expr<'a> {
+  pub fn value(&self) -> Expr {
     let ptr = self.0.nth_child(1).unwrap();
     Expr::new(ptr)
   }
 }
 
-impl<'a> Serialize for AssignExpr<'a> {
+impl Serialize for AssignExpr {
   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
   where
     S: serde::Serializer,
@@ -353,19 +353,19 @@ impl<'a> Serialize for AssignExpr<'a> {
   }
 }
 
-impl<'a> Spanned for AssignExpr<'a> {
+impl Spanned for AssignExpr {
   fn span(&self) -> Span {
     self.0.span()
   }
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
-pub enum AssignTarget<'a> {
-  Ident(Var<'a>),
+pub enum AssignTarget {
+  Ident(Var),
 }
 
-impl<'a> AssignTarget<'a> {
-  pub fn new(ptr: AstNodePtr<'a>) -> Self {
+impl AssignTarget {
+  pub fn new(ptr: AstNodePtr) -> Self {
     match &ptr.get().inner {
       AstNodeKind::Var(_) => Self::Ident(Var(ptr)),
       _ => unreachable!(),
@@ -374,9 +374,9 @@ impl<'a> AssignTarget<'a> {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct LogicExpr<'a>(AstNodePtr<'a>);
+pub struct LogicExpr(AstNodePtr);
 
-impl<'a> LogicExpr<'a> {
+impl LogicExpr {
   pub fn operator(&self) -> LogicalOp {
     match &self.0.get().inner {
       AstNodeKind::LogicExpr(op) => *op,
@@ -384,24 +384,24 @@ impl<'a> LogicExpr<'a> {
     }
   }
 
-  pub fn left_operand(&self) -> Expr<'a> {
+  pub fn left_operand(&self) -> Expr {
     let left = self.0.nth_child(0).unwrap();
     Expr::new(left)
   }
 
-  pub fn right_operand(&self) -> Expr<'a> {
+  pub fn right_operand(&self) -> Expr {
     let right = self.0.nth_child(1).unwrap();
     Expr::new(right)
   }
 }
 
-impl<'a> Spanned for LogicExpr<'a> {
+impl Spanned for LogicExpr {
   fn span(&self) -> Span {
     self.0.span()
   }
 }
 
-impl<'a> Serialize for LogicExpr<'a> {
+impl Serialize for LogicExpr {
   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
   where
     S: serde::Serializer,
@@ -418,19 +418,19 @@ impl<'a> Serialize for LogicExpr<'a> {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct CallExpr<'a>(AstNodePtr<'a>);
+pub struct CallExpr(AstNodePtr);
 
-impl<'a> CallExpr<'a> {
-  pub fn callee(&self) -> Expr<'a> {
+impl CallExpr {
+  pub fn callee(&self) -> Expr {
     Expr::new(self.0.nth_child(0).unwrap())
   }
 
-  pub fn argument_list(&self) -> Args<'a> {
+  pub fn argument_list(&self) -> Args {
     Args(self.0.nth_child(1).unwrap())
   }
 }
 
-impl<'a> Serialize for CallExpr<'a> {
+impl Serialize for CallExpr {
   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
   where
     S: serde::Serializer,
@@ -444,22 +444,22 @@ impl<'a> Serialize for CallExpr<'a> {
   }
 }
 
-impl<'a> Spanned for CallExpr<'a> {
+impl Spanned for CallExpr {
   fn span(&self) -> Span {
     self.0.span()
   }
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Args<'a>(AstNodePtr<'a>);
+pub struct Args(AstNodePtr);
 
-impl<'a> Args<'a> {
-  pub fn arguments(&self) -> Box<dyn Iterator<Item = Expr<'a>> + 'a> {
+impl Args {
+  pub fn arguments(&self) -> Box<dyn Iterator<Item = Expr>> {
     Box::new(self.0.children().map(Expr::new))
   }
 }
 
-impl<'a> Serialize for Args<'a> {
+impl Serialize for Args {
   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
   where
     S: serde::Serializer,
@@ -472,7 +472,7 @@ impl<'a> Serialize for Args<'a> {
   }
 }
 
-impl<'a> Spanned for Args<'a> {
+impl Spanned for Args {
   fn span(&self) -> Span {
     self.0.span()
   }

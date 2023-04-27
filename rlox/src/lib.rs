@@ -11,7 +11,7 @@ mod parser;
 
 use std::{borrow::Cow, cell::RefCell};
 
-use ast::{facades::Program, SyntaxTree};
+use ast::{facades::Program, AstNode, SyntaxTree};
 use miette::{Diagnostic, GraphicalReportHandler, Report};
 use rlox_span::Interner;
 
@@ -24,7 +24,10 @@ use crate::{
 // Global variables in the parsing context.
 // We don't support multi-threaded parser so a thread local is enough.
 std::thread_local! {
+  // Interner stores mapping from [SymbolId] -> Str of the symbol
   pub static INTERNER: RefCell<Interner>  = RefCell::new(Interner::default());
+  /// Node Arena stores mapping from [AstNodeId] -> [AstNode]
+  pub static NODE_ARENA: RefCell<indextree::Arena<AstNode>> = RefCell::new(indextree::Arena::new());
 }
 
 /// The interpreter that handles interpreting and executing source code.

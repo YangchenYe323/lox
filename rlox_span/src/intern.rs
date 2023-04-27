@@ -23,7 +23,7 @@ pub struct Interner {
 }
 
 impl std::fmt::Debug for Interner {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+  fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
     f.debug_struct("Interner")
       .field("names", &self.names)
       .finish()

@@ -6,23 +6,23 @@ use crate::ast::AstNodeKind;
 use super::{stmt::Stmt, AstNodePtr};
 
 #[derive(Debug, Clone, Copy)]
-pub struct Program<'a>(AstNodePtr<'a>);
+pub struct Program(AstNodePtr);
 
-impl<'a> Program<'a> {
-  pub fn new(ptr: AstNodePtr<'a>) -> Self {
+impl Program {
+  pub fn new(ptr: AstNodePtr) -> Self {
     match &ptr.get().inner {
       AstNodeKind::Program => Self(ptr),
       _ => unreachable!(),
     }
   }
 
-  pub fn stmts(&self) -> Box<dyn Iterator<Item = Stmt<'a>> + 'a> {
+  pub fn stmts(&self) -> Box<dyn Iterator<Item = Stmt>> {
     let children = self.0.children();
     Box::new(children.map(Stmt::new))
   }
 }
 
-impl<'a> Serialize for Program<'a> {
+impl Serialize for Program {
   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
   where
     S: serde::Serializer,
@@ -35,7 +35,7 @@ impl<'a> Serialize for Program<'a> {
   }
 }
 
-impl<'a> Spanned for Program<'a> {
+impl Spanned for Program {
   fn span(&self) -> Span {
     self.0.span()
   }
