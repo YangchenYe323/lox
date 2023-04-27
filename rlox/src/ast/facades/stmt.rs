@@ -13,10 +13,12 @@ use rlox_span::{Span, Spanned, SymbolId};
 pub enum Stmt {
   Expr(ExprStmt),
   VarDecl(VarDecl),
+  FnDecl(FnDecl),
   Block(Block),
   If(IfStmt),
   While(WhileStmt),
   Break(BreakStmt),
+  Return(ReturnStmt),
 }
 
 impl Stmt {
@@ -28,6 +30,8 @@ impl Stmt {
       AstNodeKind::IfStmt => Self::If(IfStmt(ptr)),
       AstNodeKind::WhileStmt => Self::While(WhileStmt(ptr)),
       AstNodeKind::Break => Self::Break(BreakStmt(ptr)),
+      AstNodeKind::FnDecl(_) => Self::FnDecl(FnDecl(ptr)),
+      AstNodeKind::Return => Self::Return(ReturnStmt(ptr)),
       k => {
         unreachable!(
           "Shouldn't construct statement out of AST Node kind: {:?}",
@@ -47,6 +51,8 @@ impl Spanned for Stmt {
       Stmt::If(s) => s.span(),
       Stmt::While(s) => s.span(),
       Stmt::Break(s) => s.span(),
+      Stmt::FnDecl(s) => s.span(),
+      Stmt::Return(s) => s.span(),
     }
   }
 }
@@ -90,8 +96,8 @@ impl VarDecl {
     }
   }
 
-  pub fn init_expr(&self) -> Option<Expr> {
-    self.0.nth_child(0).map(Expr::new)
+  pub fn init_expr(&self) -> Expr {
+    self.0.nth_child(0).map(Expr::new).unwrap()
   }
 }
 
@@ -239,6 +245,104 @@ impl Serialize for BreakStmt {
 }
 
 impl Spanned for BreakStmt {
+  fn span(&self) -> Span {
+    self.0.span()
+  }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct FnDecl(AstNodePtr);
+
+impl FnDecl {
+  pub fn name(&self) -> SymbolId {
+    match self.0.get().inner {
+      AstNodeKind::FnDecl(name) => name,
+      _ => unreachable!(),
+    }
+  }
+
+  pub fn parameter_list(&self) -> Params {
+    self.0.nth_child(0).map(Params).unwrap()
+  }
+
+  pub fn body(&self) -> Block {
+    self.0.nth_child(1).map(Block).unwrap()
+  }
+}
+
+impl Serialize for FnDecl {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: serde::Serializer,
+  {
+    let name = self.name();
+    let param_list = self.parameter_list();
+    let body = self.body();
+
+    let mut state = serializer.serialize_struct("FnDecl", 3)?;
+    state.serialize_field("name", &name)?;
+    state.serialize_field("parameters", &param_list)?;
+    state.serialize_field("body", &body)?;
+    state.end()
+  }
+}
+
+impl Spanned for FnDecl {
+  fn span(&self) -> Span {
+    self.0.span()
+  }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Params(AstNodePtr);
+
+impl Params {
+  pub fn parameters(&self) -> impl Iterator<Item = VarDecl> {
+    self.0.children().map(VarDecl)
+  }
+}
+
+impl Serialize for Params {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: serde::Serializer,
+  {
+    let mut seq = serializer.serialize_seq(None)?;
+    for param in self.parameters() {
+      seq.serialize_element(&param)?;
+    }
+    seq.end()
+  }
+}
+
+impl Spanned for Params {
+  fn span(&self) -> Span {
+    self.0.span()
+  }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct ReturnStmt(AstNodePtr);
+
+impl ReturnStmt {
+  pub fn returned_expr(&self) -> Expr {
+    self.0.nth_child(0).map(Expr::new).unwrap()
+  }
+}
+
+impl Serialize for ReturnStmt {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: serde::Serializer,
+  {
+    let mut state = serializer.serialize_struct("ReturnStmt", 1)?;
+    let returned = self.returned_expr();
+    state.serialize_field("value", &returned)?;
+    state.end()
+  }
+}
+
+impl Spanned for ReturnStmt {
   fn span(&self) -> Span {
     self.0.span()
   }

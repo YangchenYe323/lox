@@ -1,0 +1,8 @@
+fun recursive(a) {
+  print(a)
+  if a > 0 {
+    recursive(a - 1)
+  }
+}
+
+recursive(10)

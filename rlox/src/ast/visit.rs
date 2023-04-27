@@ -1,6 +1,7 @@
 use super::facades::{
-  AssignExpr, BinaryExpr, Block, BoolLit, BreakStmt, CallExpr, Expr, ExprStmt, IfStmt, LogicExpr,
-  NilLit, NumericLit, Program, Stmt, StringLit, TernaryExpr, UnaryExpr, Var, VarDecl, WhileStmt,
+  AssignExpr, BinaryExpr, Block, BoolLit, BreakStmt, CallExpr, Expr, ExprStmt, FnDecl, IfStmt,
+  LogicExpr, NilLit, NumericLit, Program, ReturnStmt, Stmt, StringLit, TernaryExpr, UnaryExpr, Var,
+  VarDecl, WhileStmt,
 };
 
 pub trait AstVisitor {
@@ -10,9 +11,13 @@ pub trait AstVisitor {
 
   fn visit_variable_declaration(&mut self, var_decl: VarDecl) -> Self::Ret;
 
+  fn visit_function_declaration(&mut self, fn_decl: FnDecl) -> Self::Ret;
+
   fn visit_statement(&mut self, stmt: Stmt) -> Self::Ret;
 
   fn visit_break_statement(&mut self, break_stmt: BreakStmt) -> Self::Ret;
+
+  fn visit_return_statement(&mut self, return_stmt: ReturnStmt) -> Self::Ret;
 
   fn visit_expression_statement(&mut self, expr_stmt: ExprStmt) -> Self::Ret;
 

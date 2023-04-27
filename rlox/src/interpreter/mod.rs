@@ -1,9 +1,12 @@
+use std::rc::Rc;
+
 use bitflags::bitflags;
 
 use crate::ast::{
   facades::{
-    AssignExpr, BinaryExpr, Block, BoolLit, BreakStmt, CallExpr, Expr, ExprStmt, IfStmt, LogicExpr,
-    NilLit, NumericLit, Program, Stmt, StringLit, TernaryExpr, UnaryExpr, Var, VarDecl, WhileStmt,
+    AssignExpr, BinaryExpr, Block, BoolLit, BreakStmt, CallExpr, Expr, ExprStmt, FnDecl, IfStmt,
+    LogicExpr, NilLit, NumericLit, Program, ReturnStmt, Stmt, StringLit, TernaryExpr, UnaryExpr,
+    Var, VarDecl, WhileStmt,
   },
   visit::AstVisitor,
   LogicalOp,
@@ -13,7 +16,7 @@ use self::{
   diagnostics::{LoxRuntimeError, SpannedLoxRuntimeError, SpannedLoxRuntimeErrorWrapper},
   eval::{logical_and, logical_or, BinaryEval, UnaryEval},
   runtime::{populate_builtin_globals, Environment},
-  types::LoxValueKind,
+  types::{Function, LoxValueKind},
 };
 
 mod builtin_functions;
@@ -66,6 +69,8 @@ impl AstVisitor for Evaluator {
       Stmt::If(stmt) => self.visit_if_statement(stmt),
       Stmt::While(stmt) => self.visit_while_statement(stmt),
       Stmt::Break(stmt) => self.visit_break_statement(stmt),
+      Stmt::FnDecl(stmt) => self.visit_function_declaration(stmt),
+      Stmt::Return(stmt) => self.visit_return_statement(stmt),
     }
   }
 
@@ -74,13 +79,19 @@ impl AstVisitor for Evaluator {
     Ok(LoxValueKind::nil())
   }
 
+  fn visit_return_statement(&mut self, return_stmt: ReturnStmt) -> Self::Ret {
+    let value = self.visit_expression(return_stmt.returned_expr())?;
+    self.context |= ExecutionContext::RETURN;
+    Ok(value)
+  }
+
   fn visit_while_statement(&mut self, while_stmt: WhileStmt) -> Self::Ret {
-    self.with_context(ExecutionContext::IN_LOOP, |parser| {
+    self.with_context(ExecutionContext::IN_LOOP, |evaluator| {
       let pred = while_stmt.pred();
       let body = while_stmt.body();
-      while parser.visit_expression(pred)?.is_truthful() {
-        parser.visit_statement(body)?;
-        if parser.to_break_from_loop() {
+      while evaluator.visit_expression(pred)?.is_truthful() {
+        evaluator.visit_statement(body)?;
+        if evaluator.to_break_from_loop() {
           break;
         }
       }
@@ -99,12 +110,17 @@ impl AstVisitor for Evaluator {
 
   fn visit_variable_declaration(&mut self, var_decl: VarDecl) -> Self::Ret {
     let symbol = var_decl.var_symbol();
-    let init = if let Some(expr) = var_decl.init_expr() {
-      self.visit_expression(expr)?
-    } else {
-      LoxValueKind::nil()
-    };
+    let init = self.visit_expression(var_decl.init_expr())?;
     self.environment.define(symbol, init);
+    Ok(LoxValueKind::nil())
+  }
+
+  fn visit_function_declaration(&mut self, fn_decl: FnDecl) -> Self::Ret {
+    let name = fn_decl.name();
+    let function = Function::new(fn_decl);
+    self
+      .environment
+      .define(name, LoxValueKind::Callable(Rc::new(function)));
     Ok(LoxValueKind::nil())
   }
 
@@ -118,7 +134,7 @@ impl AstVisitor for Evaluator {
     let mut value = LoxValueKind::nil();
     for stmt in block.statements() {
       value = self.visit_statement(stmt)?;
-      if self.to_break_from_loop() {
+      if self.to_break_from_loop() | self.to_return() {
         break;
       }
     }
@@ -143,17 +159,19 @@ impl AstVisitor for Evaluator {
   }
 
   fn visit_call_expression(&mut self, call_expr: CallExpr) -> Self::Ret {
-    let callee = self.visit_expression(call_expr.callee())?;
-    match callee {
-      LoxValueKind::Callable(c) => {
-        let mut arguments = vec![];
-        for arg in call_expr.argument_list().arguments() {
-          arguments.push(self.visit_expression(arg)?);
+    self.with_context(ExecutionContext::IN_FUNCTION, |evaluator| {
+      let callee = evaluator.visit_expression(call_expr.callee())?;
+      match callee {
+        LoxValueKind::Callable(c) => {
+          let mut arguments = vec![];
+          for arg in call_expr.argument_list().arguments() {
+            arguments.push(evaluator.visit_expression(arg)?);
+          }
+          c.call(evaluator, arguments).map_err(|e| call_expr.wrap(e))
         }
-        c.call(self, arguments).map_err(|e| call_expr.wrap(e))
+        c => Err(call_expr.wrap(LoxRuntimeError::InalidCall(c.type_name()))),
       }
-      c => Err(call_expr.wrap(LoxRuntimeError::InalidCall(c.type_name()))),
-    }
+    })
   }
 
   fn visit_assignment_expression(&mut self, expr: AssignExpr) -> Self::Ret {
@@ -230,7 +248,9 @@ bitflags! {
   #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
   struct ExecutionContext: u32 {
     const IN_LOOP = 1 << 0;
-    const BREAK = 1 << 1;
+    const IN_FUNCTION = 1 << 1;
+    const BREAK = 1 << 2;
+    const RETURN = 1 << 3;
   }
 }
 
@@ -251,5 +271,11 @@ impl Evaluator {
     self
       .context
       .contains(ExecutionContext::IN_LOOP | ExecutionContext::BREAK)
+  }
+
+  fn to_return(&self) -> bool {
+    self
+      .context
+      .contains(ExecutionContext::IN_FUNCTION | ExecutionContext::RETURN)
   }
 }

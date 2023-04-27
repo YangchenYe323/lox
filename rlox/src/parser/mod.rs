@@ -2,6 +2,7 @@
 //! Operator precedences are directly encoded in the grammar and functions of [Parser]
 //! corresponds to productions in the grammar.
 
+mod context;
 mod diagnostics;
 
 use crate::{
@@ -9,10 +10,12 @@ use crate::{
   lexer::{lex_source, Lex, LexerError, Token, TokenKind},
 };
 
-use bitflags::bitflags;
 use rlox_span::Span;
 
-use self::diagnostics::{unexpected_token, ParserError};
+use self::{
+  context::ParserContextFlags,
+  diagnostics::{unexpected_token, ParserError},
+};
 
 type ParserResult<T, E = ParserError> = std::result::Result<T, E>;
 
@@ -52,13 +55,6 @@ pub fn parse_source_program(source: &str) -> Parse {
   }
 }
 
-bitflags! {
-  #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-  struct ParserContextFlags: u32 {
-    const IN_LOOP = 1 << 0;
-  }
-}
-
 pub struct Parser {
   tokens: Vec<Token>,
   builder: SyntaxTreeBuilder,
@@ -90,54 +86,125 @@ impl Parser {
   }
 
   /// declaration → varDecl
+  ///             | functionDecl
   ///             | statement ;
   pub fn decl(&mut self) -> ParserResult<AstNodeId> {
     match self.cur_token().kind {
       TokenKind::Var => self.var_decl(),
+      TokenKind::Fun => self.func_decl(),
       _ => self.stmt(),
     }
   }
 
-  /// varDecl → "var" IDENTIFIER ( "=" expression )? ";" ;
+  /// funDecl → "fun" function ;
+  pub fn func_decl(&mut self) -> ParserResult<AstNodeId> {
+    self.with_context(ParserContextFlags::IN_FUNCTION_DECL, |parser| {
+      let start = parser.cur_span_start();
+      // advance "fun"
+      parser.advance();
+      let function = parser.func()?;
+      Ok(parser.builder.re_span_start(function, start))
+    })
+  }
+
+  /// function → IDENTIFIER "(" parameters ")" block ;
+  pub fn func(&mut self) -> ParserResult<AstNodeId> {
+    let start = self.cur_span_start();
+    // function name
+    let name = match self.cur_token().kind {
+      TokenKind::Ident(symbol) => {
+        self.advance();
+        symbol
+      }
+      _ => return Err(unexpected_token(self.cur_token())),
+    };
+    // parameter list
+    if !self.advance_if_match(TokenKind::LParen) {
+      return Err(unexpected_token(self.cur_token()));
+    }
+    let parameters = self.parameter_list()?;
+    if !self.advance_if_match(TokenKind::RParen) {
+      return Err(unexpected_token(self.cur_token()));
+    }
+    // body
+    let body = self.block()?;
+    let end = self.prev_token().span.end;
+    Ok(
+      self
+        .builder
+        .function_declaration(Span::new(start, end), name, parameters, body),
+    )
+  }
+
+  /// parameters → IDENTIFIER ( "," IDENTIFIER )* ;
+  ///             | empty
+  pub fn parameter_list(&mut self) -> ParserResult<AstNodeId> {
+    let start = self.cur_span_start();
+    let params = self.builder.start_parameter_list(start);
+    // empty
+    if matches!(self.cur_token().kind, TokenKind::RParen) {
+      Ok(self.builder.finish_parameter_list(params, start))
+    } else {
+      loop {
+        let param = self.ident_init()?;
+        self.builder.add_parameter(&params, param);
+        if !self.advance_if_match(TokenKind::Comma) {
+          break;
+        }
+      }
+      let end = self.prev_token().span.end;
+      Ok(self.builder.finish_parameter_list(params, end))
+    }
+  }
+
+  /// varDecl →  "var" identInit ;
   pub fn var_decl(&mut self) -> ParserResult<AstNodeId> {
     let start = self.cur_span_start();
     // Advance var
     self.advance();
-    let identifier = match self.cur_token().kind {
-      TokenKind::Ident(symbol) => symbol,
-      _ => return Err(unexpected_token(self.cur_token())),
-    };
-    self.advance();
-
-    let init = if self.advance_if_match(TokenKind::Eq) {
-      self.expression()?
-    } else {
-      let end = self.prev_token().span.end;
-      self.builder.nil(Span::new(end, end))
-    };
-
+    let ident_init = self.ident_init()?;
     self.automatic_semicolon_insertion()?;
     let end = self.prev_token().span.end;
 
-    Ok(
-      self
-        .builder
-        .variable_declaration(Span::new(start, end), identifier, init),
-    )
+    Ok(self.builder.re_span(ident_init, Span::new(start, end)))
   }
 
   /// statement → exprStmt
-  ///           | block ;
-  ///           | ifStmt;
-  ///           | whileStmt;
+  ///           | block
+  ///           | ifStmt
+  ///           | whileStmt
+  ///           | breakStmt
+  ///           | returnStmt
   pub fn stmt(&mut self) -> ParserResult<AstNodeId> {
     match self.cur_token().kind {
       TokenKind::LBrace => self.block(),
       TokenKind::If => self.if_stmt(),
       TokenKind::While => self.while_stmt(),
       TokenKind::Break => self.break_stmt(),
+      TokenKind::Return => self.return_stmt(),
       _ => self.expr_stmt(),
     }
+  }
+
+  pub fn return_stmt(&mut self) -> ParserResult<AstNodeId> {
+    let start = self.cur_span_start();
+    self.advance();
+    let returned = if !self.advance_if_match(TokenKind::Semicolon) {
+      self.expression()?
+    } else {
+      // Note that in our design, we search for return values eagerly including next lines.
+      let start = self.prev_token().span.start;
+      self.builder.nil(Span::new(start, start))
+    };
+    let end = self.prev_token().span.end;
+
+    let span = Span::new(start, end);
+
+    if !self.in_function() {
+      return Err(ParserError::ReturnOutsideFunction(span));
+    }
+
+    Ok(self.builder.return_statement(span, returned))
   }
 
   pub fn break_stmt(&mut self) -> ParserResult<AstNodeId> {
@@ -146,7 +213,7 @@ impl Parser {
     self.automatic_semicolon_insertion()?;
     let end = self.prev_token().span.end;
     let span = Span::new(start, end);
-    if !self.context.contains(ParserContextFlags::IN_LOOP) {
+    if !self.in_loop() {
       self
         .recovered_errors
         .push(ParserError::BreakOutsideLoop(span));
@@ -477,6 +544,31 @@ impl Parser {
     }
   }
 
+  /// identInit → IDENTIFIER ( "=" expression )? ";" ;
+  pub fn ident_init(&mut self) -> ParserResult<AstNodeId> {
+    let start = self.cur_span_start();
+
+    let identifier = match self.cur_token().kind {
+      TokenKind::Ident(symbol) => symbol,
+      _ => return Err(unexpected_token(self.cur_token())),
+    };
+    self.advance();
+
+    let init = if self.advance_if_match(TokenKind::Eq) {
+      self.expression()?
+    } else {
+      let end = self.prev_token().span.end;
+      self.builder.nil(Span::new(end, end))
+    };
+
+    let end = self.prev_token().span.end;
+    Ok(
+      self
+        .builder
+        .variable_declaration(Span::new(start, end), identifier, init),
+    )
+  }
+
   pub fn cur_token(&self) -> &Token {
     &self.tokens[self.current_idx]
   }
@@ -521,19 +613,6 @@ impl Parser {
       self.cur_token().span,
       self.cur_token().kind.to_str(),
     ))
-  }
-
-  fn with_context<T>(
-    &mut self,
-    context: ParserContextFlags,
-    f: impl FnOnce(&mut Parser) -> T,
-  ) -> T {
-    let old_context = self.context;
-    let new_context = old_context | context;
-    self.context = new_context;
-    let result = f(self);
-    self.context = old_context;
-    result
   }
 }
 

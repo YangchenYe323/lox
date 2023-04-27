@@ -24,4 +24,7 @@ rlox_macros::declare_output_tests! {
   conditionals::if1,
   loops::nested_while,
   loops::simple_while,
+  function::print,
+  function::recursion,
+  function::fib,
 }

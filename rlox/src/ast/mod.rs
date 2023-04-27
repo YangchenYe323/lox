@@ -71,6 +71,9 @@ pub enum AstNodeKind {
   IfStmt,
   WhileStmt,
   Break,
+  Return,
+  FnDecl(SymbolId),
+  FnParamList,
   // Expressions
   TernaryExpr,
   Assign,
@@ -417,10 +420,68 @@ impl SyntaxTreeBuilder {
     })
   }
 
+  pub fn function_declaration(
+    &mut self,
+    span: Span,
+    name: SymbolId,
+    parameters: AstNodeId,
+    body: AstNodeId,
+  ) -> AstNodeId {
+    let inner = AstNode {
+      span,
+      inner: AstNodeKind::FnDecl(name),
+    };
+    let fn_decl = self.new_node(inner);
+    append_child!(fn_decl, parameters, body);
+    fn_decl
+  }
+
+  pub fn start_parameter_list(&mut self, start: u32) -> ParamListBuilder {
+    let inner = AstNode {
+      span: Span::new(start, u32::MAX),
+      inner: AstNodeKind::FnParamList,
+    };
+    ParamListBuilder(self.new_node(inner))
+  }
+
+  pub fn add_parameter(&mut self, ParamListBuilder(node): &ParamListBuilder, parameter: AstNodeId) {
+    append_child!(node, parameter);
+  }
+
+  pub fn finish_parameter_list(
+    &mut self,
+    ParamListBuilder(param): ParamListBuilder,
+    end: u32,
+  ) -> AstNodeId {
+    NODE_ARENA.with_borrow_mut(|arena| {
+      let node = &mut arena[indextree::NodeId::from(param)];
+      node.get_mut().span.end = end;
+      param
+    })
+  }
+
+  pub fn return_statement(&mut self, span: Span, returned: AstNodeId) -> AstNodeId {
+    let inner = AstNode {
+      span,
+      inner: AstNodeKind::Return,
+    };
+    let return_stmt = self.new_node(inner);
+    append_child!(return_stmt, returned);
+    return_stmt
+  }
+
   pub fn re_span(&mut self, node_id: AstNodeId, new_span: Span) -> AstNodeId {
     NODE_ARENA.with_borrow_mut(|arena| {
       let node = &mut arena[indextree::NodeId::from(node_id)];
       node.get_mut().span = new_span;
+      node_id
+    })
+  }
+
+  pub fn re_span_start(&mut self, node_id: AstNodeId, new_start: u32) -> AstNodeId {
+    NODE_ARENA.with_borrow_mut(|arena| {
+      let node = &mut arena[indextree::NodeId::from(node_id)];
+      node.get_mut().span.start = new_start;
       node_id
     })
   }
@@ -449,3 +510,5 @@ pub struct ProgramBuilder(AstNodeId);
 pub struct BlockBuilder(AstNodeId);
 
 pub struct ArgListBuilder(AstNodeId);
+
+pub struct ParamListBuilder(AstNodeId);

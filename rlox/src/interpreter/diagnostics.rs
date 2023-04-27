@@ -50,3 +50,9 @@ where
     }
   }
 }
+
+impl From<SpannedLoxRuntimeError> for LoxRuntimeError {
+  fn from(value: SpannedLoxRuntimeError) -> Self {
+    value.error
+  }
+}

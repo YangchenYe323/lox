@@ -1,5 +1,10 @@
 use std::{num::NonZeroUsize, rc::Rc};
 
+use crate::ast::{
+  facades::{Block, FnDecl, VarDecl},
+  visit::AstVisitor,
+};
+
 use super::{diagnostics::LoxRuntimeError, Evaluator};
 
 /// [LoxValueKind] describes the available values of a lox object stored in a variable.
@@ -84,4 +89,56 @@ pub trait LoxCallable {
   ) -> Result<LoxValueKind, LoxRuntimeError>;
 
   fn arity(&self) -> u32;
+}
+
+/// [Function] is a user-defined function in lox language
+pub struct Function {
+  formal_parameters: Vec<VarDecl>,
+  body: Block,
+}
+
+impl Function {
+  pub fn new(handle: FnDecl) -> Self {
+    let formal_parameters = handle.parameter_list().parameters().collect();
+    let body = handle.body();
+    Self {
+      formal_parameters,
+      body,
+    }
+  }
+}
+
+impl LoxCallable for Function {
+  fn call(
+    &self,
+    evaluator: &mut Evaluator,
+    arguments: Vec<LoxValueKind>,
+  ) -> Result<LoxValueKind, LoxRuntimeError> {
+    // resolve actual arguments
+    let mut arguments = arguments;
+    // try fill in missing arguments with default initializers
+    for idx in arguments.len()..self.formal_parameters.len() {
+      arguments.push(evaluator.visit_expression(self.formal_parameters[idx].init_expr())?);
+    }
+
+    assert_eq!(arguments.len(), self.formal_parameters.len());
+
+    evaluator.environment.enter_scope();
+    // bind formal parameters to argyments
+    for (var, value) in self.formal_parameters.iter().zip(arguments.into_iter()) {
+      let symbol = var.var_symbol();
+      evaluator.environment.define(symbol, value);
+    }
+
+    let result = evaluator
+      .visit_block(self.body)
+      .map_err(LoxRuntimeError::from);
+    evaluator.environment.exit_scope();
+
+    result
+  }
+
+  fn arity(&self) -> u32 {
+    self.formal_parameters.len() as u32
+  }
 }

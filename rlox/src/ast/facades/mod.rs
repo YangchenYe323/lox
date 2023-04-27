@@ -20,7 +20,9 @@ pub use self::expr::{
   NumericLit, StringLit, TernaryExpr, UnaryExpr, Var,
 };
 pub use self::program::Program;
-pub use self::stmt::{Block, BreakStmt, ExprStmt, IfStmt, Stmt, VarDecl, WhileStmt};
+pub use self::stmt::{
+  Block, BreakStmt, ExprStmt, FnDecl, IfStmt, Params, ReturnStmt, Stmt, VarDecl, WhileStmt,
+};
 
 #[derive(Debug, Clone, Copy)]
 pub struct AstNodePtr {
