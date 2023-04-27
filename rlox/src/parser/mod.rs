@@ -402,7 +402,7 @@ impl Parser {
   /// arguments → expression ( "," expression )*;
   ///            | empty
   pub fn arguments(&mut self) -> ParserResult<AstNodeId> {
-    const MAX_ARGUMENTS: u32 = 3;
+    const MAX_ARGUMENTS: u32 = 255;
 
     let start = self.cur_span_start();
 

@@ -22,25 +22,39 @@ mod eval;
 mod runtime;
 mod types;
 
-#[derive(Default)]
 pub struct Evaluator {
   environment: Environment,
   context: ExecutionContext,
+}
+
+impl Default for Evaluator {
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
+impl Evaluator {
+  pub fn new() -> Self {
+    let mut environment = Environment::default();
+    environment.enter_scope();
+    populate_builtin_globals(&mut environment);
+    let context = ExecutionContext::default();
+    Self {
+      environment,
+      context,
+    }
+  }
 }
 
 impl<'a> AstVisitor<'a> for Evaluator {
   type Ret = Result<LoxValueKind, SpannedLoxRuntimeError>;
 
   fn visit_program(&mut self, program: Program<'a>) -> Self::Ret {
-    self.environment.enter_scope();
-    // set up built-in functions
-    populate_builtin_globals(&mut self.environment);
-
     let mut value = LoxValueKind::nil();
     for stmt in program.stmts() {
       value = self.visit_statement(stmt)?;
     }
-    self.environment.exit_scope();
+
     Ok(value)
   }
 
