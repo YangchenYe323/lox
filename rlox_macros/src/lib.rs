@@ -1,3 +1,7 @@
+//! This crate contains utility procedural macros, which are meant to be used in other rlox
+//! crates and hence couples tightly with the specific items available where the macros are invoked.
+//! They are NOT general purpose.
+
 use syn::parse_macro_input;
 
 mod testing;
