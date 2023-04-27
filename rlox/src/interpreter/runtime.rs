@@ -5,7 +5,7 @@ use rustc_hash::FxHashMap;
 use rlox_span::SymbolId;
 
 use crate::ast::facades::AssignTarget;
-use crate::INTERNER;
+use crate::ast::INTERNER;
 
 use super::builtin_functions::builtin_print;
 use super::builtin_functions::builtin_time;

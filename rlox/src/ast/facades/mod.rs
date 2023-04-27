@@ -13,9 +13,7 @@ mod stmt;
 
 use rlox_span::{Span, Spanned};
 
-use crate::NODE_ARENA;
-
-use super::{AstNode, AstNodeId};
+use super::{AstNode, AstNodeId, NODE_ARENA};
 
 pub use self::expr::{
   Args, AssignExpr, AssignTarget, BinaryExpr, BoolLit, CallExpr, Expr, LogicExpr, NilLit,

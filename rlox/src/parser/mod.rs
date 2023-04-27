@@ -5,9 +5,8 @@
 mod diagnostics;
 
 use crate::{
-  ast::{AstNodeId, BinaryOp, LogicalOp, SyntaxTree, SyntaxTreeBuilder, UnaryOp},
+  ast::{AstNodeId, BinaryOp, LogicalOp, SyntaxTree, SyntaxTreeBuilder, UnaryOp, INTERNER},
   lexer::{lex_source, Lex, LexerError, Token, TokenKind},
-  INTERNER,
 };
 
 use bitflags::bitflags;

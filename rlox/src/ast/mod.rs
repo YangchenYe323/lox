@@ -9,15 +9,23 @@
 pub mod facades;
 pub mod visit;
 
+use std::cell::RefCell;
 use std::ops::Deref;
 
 use serde::Serialize;
 
-use crate::NODE_ARENA;
-
 use self::facades::AstNodePtr;
 
-use rlox_span::{Span, SymbolId};
+use rlox_span::{Interner, Span, SymbolId};
+
+// Global variables in the parsing context.
+// We don't support multi-threaded parser so a thread local is enough.
+std::thread_local! {
+  // Interner stores mapping from [SymbolId] -> Str of the symbol
+  pub static INTERNER: RefCell<Interner>  = RefCell::new(Interner::default());
+  /// Node Arena stores mapping from [AstNodeId] -> [AstNode]
+  pub static NODE_ARENA: RefCell<indextree::Arena<AstNode>> = RefCell::new(indextree::Arena::new());
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct AstNodeId(indextree::NodeId);
