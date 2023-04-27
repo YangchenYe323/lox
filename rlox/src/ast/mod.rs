@@ -30,6 +30,14 @@ std::thread_local! {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct AstNodeId(indextree::NodeId);
 
+/*
+ [AstNodeId] do not implement Send or Sync because it is tied to a thread local arena. If you send an [AstNodeId] across
+ thread boundary, you can no longer retrieve the corresponding [AstNode] because you no longer have access to the arena from
+ which it is born.
+*/
+impl !Send for AstNodeId {}
+impl !Sync for AstNodeId {}
+
 impl From<indextree::NodeId> for AstNodeId {
   fn from(value: indextree::NodeId) -> Self {
     Self(value)
