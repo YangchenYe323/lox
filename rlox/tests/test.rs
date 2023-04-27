@@ -28,4 +28,6 @@ rlox_macros::declare_output_tests! {
   function::recursion,
   function::fib,
   comp_errors::print,
+  comp_errors::invalid_return,
+  comp_errors::invalid_break,
 }

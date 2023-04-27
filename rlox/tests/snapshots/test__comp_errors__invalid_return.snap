@@ -1,0 +1,15 @@
+---
+source: rlox/tests/test.rs
+assertion_line: 19
+expression: output
+---
+
+  × Return statement cannot be used outside of function
+   ╭─[1:1]
+ 1 │ if 1 < 2 {
+ 2 │   return;
+   ·   ───────
+ 3 │ }
+   ╰────
+
+
