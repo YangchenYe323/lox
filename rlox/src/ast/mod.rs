@@ -54,7 +54,6 @@ pub enum AstNodeKind {
   VarDecl(SymbolId),
   // Statements
   ExprStmt,
-  PrintStmt,
   Block,
   IfStmt,
   WhileStmt,
@@ -236,17 +235,6 @@ impl SyntaxTreeBuilder {
     let inner = AstNode {
       span,
       inner: AstNodeKind::ExprStmt,
-    };
-    let stmt = AstNodeId::from(self.arena.new_node(inner));
-    append_child!(stmt, &mut self.arena, expr);
-
-    stmt
-  }
-
-  pub fn print_statement(&mut self, span: Span, expr: AstNodeId) -> AstNodeId {
-    let inner = AstNode {
-      span,
-      inner: AstNodeKind::PrintStmt,
     };
     let stmt = AstNodeId::from(self.arena.new_node(inner));
     append_child!(stmt, &mut self.arena, expr);

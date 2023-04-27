@@ -128,13 +128,11 @@ impl Parser {
   }
 
   /// statement → exprStmt
-  ///           | printStmt
   ///           | block ;
   ///           | ifStmt;
   ///           | whileStmt;
   pub fn stmt(&mut self) -> ParserResult<AstNodeId> {
     match self.cur_token().kind {
-      TokenKind::Print => self.print_stmt(),
       TokenKind::LBrace => self.block(),
       TokenKind::If => self.if_stmt(),
       TokenKind::While => self.while_stmt(),
@@ -231,19 +229,6 @@ impl Parser {
         .builder
         .expression_statement(Span::new(start, end), expr),
     )
-  }
-
-  /// printStmt → print expression ";" ;
-  pub fn print_stmt(&mut self) -> ParserResult<AstNodeId> {
-    let start = self.cur_span_start();
-    // Advance over print
-    self.advance();
-    let expr = self.expression()?;
-
-    self.automatic_semicolon_insertion()?;
-
-    let end = self.prev_token().span.end;
-    Ok(self.builder.print_statement(Span::new(start, end), expr))
   }
 
   /// expression → assignment

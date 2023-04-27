@@ -28,7 +28,7 @@ std::thread_local! {
 }
 
 /// The interpreter that handles interpreting and executing source code.
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct Interpreter {
   reporter: GraphicalReportHandler,
   evaluator: Evaluator,

@@ -3,8 +3,7 @@ use bitflags::bitflags;
 use crate::ast::{
   facades::{
     AssignExpr, BinaryExpr, Block, BoolLit, BreakStmt, CallExpr, Expr, ExprStmt, IfStmt, LogicExpr,
-    NilLit, NumericLit, PrintStmt, Program, Stmt, StringLit, TernaryExpr, UnaryExpr, Var, VarDecl,
-    WhileStmt,
+    NilLit, NumericLit, Program, Stmt, StringLit, TernaryExpr, UnaryExpr, Var, VarDecl, WhileStmt,
   },
   visit::AstVisitor,
   LogicalOp,
@@ -13,16 +12,17 @@ use crate::ast::{
 use self::{
   diagnostics::{LoxRuntimeError, SpannedLoxRuntimeError, SpannedLoxRuntimeErrorWrapper},
   eval::{logical_and, logical_or, BinaryEval, UnaryEval},
-  runtime::Environment,
+  runtime::{populate_builtin_globals, Environment},
   types::LoxValueKind,
 };
 
+mod builtin_functions;
 mod diagnostics;
 mod eval;
 mod runtime;
 mod types;
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct Evaluator {
   environment: Environment,
   context: ExecutionContext,
@@ -33,6 +33,9 @@ impl<'a> AstVisitor<'a> for Evaluator {
 
   fn visit_program(&mut self, program: Program<'a>) -> Self::Ret {
     self.environment.enter_scope();
+    // set up built-in functions
+    populate_builtin_globals(&mut self.environment);
+
     let mut value = LoxValueKind::nil();
     for stmt in program.stmts() {
       value = self.visit_statement(stmt)?;
@@ -44,7 +47,6 @@ impl<'a> AstVisitor<'a> for Evaluator {
   fn visit_statement(&mut self, stmt: Stmt<'a>) -> Self::Ret {
     match stmt {
       Stmt::Expr(stmt) => self.visit_expression_statement(stmt),
-      Stmt::Print(stmt) => self.visit_print_statement(stmt),
       Stmt::VarDecl(stmt) => self.visit_variable_declaration(stmt),
       Stmt::Block(stmt) => self.visit_block(stmt),
       Stmt::If(stmt) => self.visit_if_statement(stmt),
@@ -97,12 +99,6 @@ impl<'a> AstVisitor<'a> for Evaluator {
     Ok(expr)
   }
 
-  fn visit_print_statement(&mut self, print_stmt: PrintStmt<'a>) -> Self::Ret {
-    let expr = self.visit_expression(print_stmt.expr())?;
-    println!("{}", expr);
-    Ok(LoxValueKind::nil())
-  }
-
   fn visit_block(&mut self, block: Block<'a>) -> Self::Ret {
     self.environment.enter_scope();
     let mut value = LoxValueKind::nil();
@@ -132,8 +128,18 @@ impl<'a> AstVisitor<'a> for Evaluator {
     }
   }
 
-  fn visit_call_expression(&mut self, _call_expr: CallExpr<'a>) -> Self::Ret {
-    todo!()
+  fn visit_call_expression(&mut self, call_expr: CallExpr<'a>) -> Self::Ret {
+    let callee = self.visit_expression(call_expr.callee())?;
+    match callee {
+      LoxValueKind::Callable(c) => {
+        let mut arguments = vec![];
+        for arg in call_expr.argument_list().arguments() {
+          arguments.push(self.visit_expression(arg)?);
+        }
+        c.call(self, arguments).map_err(|e| call_expr.wrap(e))
+      }
+      c => Err(call_expr.wrap(LoxRuntimeError::InalidCall(c.type_name()))),
+    }
   }
 
   fn visit_assignment_expression(&mut self, expr: AssignExpr<'a>) -> Self::Ret {

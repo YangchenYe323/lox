@@ -1,14 +1,17 @@
-use std::num::NonZeroUsize;
+use std::{num::NonZeroUsize, rc::Rc};
+
+use super::{diagnostics::LoxRuntimeError, Evaluator};
 
 /// [LoxValueKind] describes the available values of a lox object stored in a variable.
 /// Since lox is dynamically typed, every variable is mapped to an [ObjectId], which stores
 /// [LoxValueKind]
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum LoxValueKind {
   Number(f64),
   String(String),
   Boolean(bool),
   Object(ObjectId),
+  Callable(Rc<dyn LoxCallable>),
 }
 
 impl std::fmt::Display for LoxValueKind {
@@ -18,6 +21,7 @@ impl std::fmt::Display for LoxValueKind {
       LoxValueKind::String(s) => s.fmt(f),
       LoxValueKind::Boolean(b) => b.fmt(f),
       LoxValueKind::Object(object) => object.fmt(f),
+      LoxValueKind::Callable(_) => "lox callable".fmt(f),
     }
   }
 }
@@ -34,6 +38,7 @@ impl LoxValueKind {
       LoxValueKind::String(s) => !s.is_empty(),
       LoxValueKind::Boolean(b) => *b,
       LoxValueKind::Object(o) => !matches!(o, ObjectId::Nil),
+      LoxValueKind::Callable(_) => true,
     }
   }
 
@@ -43,9 +48,10 @@ impl LoxValueKind {
       LoxValueKind::String(_) => "String",
       LoxValueKind::Boolean(_) => "Boolean",
       LoxValueKind::Object(o) => match o {
-        ObjectId::Nil => "nil",
-        ObjectId::Id(_) => "object",
+        ObjectId::Nil => "Nil",
+        ObjectId::Id(_) => "Object",
       },
+      LoxValueKind::Callable(_) => "Callable",
     }
   }
 }
@@ -66,4 +72,16 @@ impl std::fmt::Display for ObjectId {
       ObjectId::Id(id) => format!("object located at: {}", id).fmt(f),
     }
   }
+}
+
+/// [LoxCallable] trait describes a lox value that can be called, e.g., a
+/// user defined function or an interpreter built-in function.
+pub trait LoxCallable {
+  fn call(
+    &self,
+    evaluator: &mut Evaluator,
+    arguments: Vec<LoxValueKind>,
+  ) -> Result<LoxValueKind, LoxRuntimeError>;
+
+  fn arity(&self) -> u32;
 }

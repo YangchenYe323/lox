@@ -12,7 +12,6 @@ use rlox_span::{Span, Spanned, SymbolId};
 #[derive(Debug, Clone, Copy, Serialize)]
 pub enum Stmt<'a> {
   Expr(ExprStmt<'a>),
-  Print(PrintStmt<'a>),
   VarDecl(VarDecl<'a>),
   Block(Block<'a>),
   If(IfStmt<'a>),
@@ -24,7 +23,6 @@ impl<'a> Stmt<'a> {
   pub fn new(ptr: AstNodePtr<'a>) -> Self {
     match &ptr.get().inner {
       AstNodeKind::ExprStmt => Self::Expr(ExprStmt(ptr)),
-      AstNodeKind::PrintStmt => Self::Print(PrintStmt(ptr)),
       AstNodeKind::VarDecl(_) => Self::VarDecl(VarDecl(ptr)),
       AstNodeKind::Block => Self::Block(Block(ptr)),
       AstNodeKind::IfStmt => Self::If(IfStmt(ptr)),
@@ -44,7 +42,6 @@ impl<'a> Spanned for Stmt<'a> {
   fn span(&self) -> Span {
     match self {
       Stmt::Expr(s) => s.span(),
-      Stmt::Print(s) => s.span(),
       Stmt::VarDecl(s) => s.span(),
       Stmt::Block(s) => s.span(),
       Stmt::If(s) => s.span(),
@@ -76,33 +73,6 @@ impl<'a> Serialize for ExprStmt<'a> {
 }
 
 impl<'a> Spanned for ExprStmt<'a> {
-  fn span(&self) -> Span {
-    self.0.span()
-  }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct PrintStmt<'a>(AstNodePtr<'a>);
-
-impl<'a> PrintStmt<'a> {
-  pub fn expr(&self) -> Expr<'a> {
-    Expr::new(self.0.nth_child(0).unwrap())
-  }
-}
-
-impl<'a> Serialize for PrintStmt<'a> {
-  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-  where
-    S: serde::Serializer,
-  {
-    let mut state = serializer.serialize_struct("PrintStmt", 1)?;
-    let expr = self.expr();
-    state.serialize_field("expr", &expr)?;
-    state.end()
-  }
-}
-
-impl<'a> Spanned for PrintStmt<'a> {
   fn span(&self) -> Span {
     self.0.span()
   }

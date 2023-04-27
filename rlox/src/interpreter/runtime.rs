@@ -5,7 +5,10 @@ use rustc_hash::FxHashMap;
 use rlox_span::SymbolId;
 
 use crate::ast::facades::AssignTarget;
+use crate::INTERNER;
 
+use super::builtin_functions::builtin_print;
+use super::builtin_functions::builtin_time;
 use super::types::LoxValueKind;
 use super::types::ObjectId;
 
@@ -14,7 +17,6 @@ use super::types::ObjectId;
 /// 1. A simulation of the memory model as a mapping from [ObjectId] -> [LoxValueKind]
 /// 2. Scope chain as a chained mapping from [SymbolId] -> [ObjectId]
 /// 3. Dummy memory allocator with just a bump of [ObjectId]
-#[derive(Debug)]
 pub struct Environment {
   memory: FxHashMap<ObjectId, LoxValueKind>,
   scopes: Vec<FxHashMap<SymbolId, ObjectId>>,
@@ -91,4 +93,14 @@ impl Environment {
     self.next_addr += 1;
     id
   }
+}
+
+pub fn populate_builtin_globals(environment: &mut Environment) {
+  populate_global(environment, "time", builtin_time());
+  populate_global(environment, "print", builtin_print());
+}
+
+fn populate_global(environment: &mut Environment, name: &'static str, value: LoxValueKind) {
+  let symbol = INTERNER.with_borrow_mut(|interner| interner.intern(name));
+  environment.define(symbol, value);
 }

@@ -1,6 +1,6 @@
 var a = "A"
 while a < "ABCD" {
-  print a
+  print(a)
   if a == "A" {
     a = a + "B"
   } else {
