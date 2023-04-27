@@ -199,7 +199,9 @@ impl Parser {
     let start = self.cur_span_start();
     self.advance();
     let returned = if !self.advance_if_match(TokenKind::Semicolon) {
-      self.expression()?
+      let expr = self.expression()?;
+      self.automatic_semicolon_insertion()?;
+      expr
     } else {
       // Note that in our design, we search for return values eagerly including next lines.
       let start = self.prev_token().span.start;
