@@ -50,12 +50,15 @@ impl Deref for AstNodeId {
   }
 }
 
+/// Wraps [AstNodeKind] with the span in the source text.
 #[derive(Debug, Clone)]
 pub struct AstNode {
   span: Span,
   inner: AstNodeKind,
 }
 
+/// Inner data belonging to each Ast Node. This type is intended to be easily cloneable and copiable.
+/// It encodes only the local data, not child/parent relations.
 #[derive(Debug, Clone, Copy)]
 pub enum AstNodeKind {
   // Program
@@ -81,6 +84,12 @@ pub enum AstNodeKind {
   BoolLiteral(bool),
   Var(SymbolId),
   Nil,
+}
+
+#[test]
+fn ast_kind_size() {
+  // 24 = size_of::<(SymbolId, &'static str)>
+  assert_eq!(24, std::mem::size_of::<AstNodeKind>());
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
