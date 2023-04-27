@@ -40,7 +40,7 @@ impl<'a> AstVisitor<'a> for Evaluator {
     for stmt in program.stmts() {
       value = self.visit_statement(stmt)?;
     }
-    self.environment.enter_scope();
+    self.environment.exit_scope();
     Ok(value)
   }
 
