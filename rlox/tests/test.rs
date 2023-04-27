@@ -23,4 +23,5 @@ fn test_source(name: &'static str) {
 rlox_macros::declare_output_tests! {
   conditionals::if1,
   loops::nested_while,
+  loops::simple_while,
 }

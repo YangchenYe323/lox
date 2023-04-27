@@ -1,0 +1,15 @@
+var a = "A"
+while a < "ABCD" {
+  print a
+  if a == "A" {
+    a = a + "B"
+  } else {
+    if a == "AB" {
+    a = a + "C"
+    } else {
+      if a == "ABC" {
+        a = a + "D"
+      }
+    }
+  }
+}
