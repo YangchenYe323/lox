@@ -198,17 +198,17 @@ impl Parser {
   pub fn return_stmt(&mut self) -> ParserResult<AstNodeId> {
     let start = self.cur_span_start();
     self.advance();
-    let returned = if !self.advance_if_match(TokenKind::Semicolon) {
-      let expr = self.expression()?;
-      self.automatic_semicolon_insertion()?;
-      expr
-    } else {
-      // Note that in our design, we search for return values eagerly including next lines.
-      let start = self.prev_token().span.start;
-      self.builder.nil(Span::new(start, start))
-    };
-    let end = self.prev_token().span.end;
+    let returned =
+      if !matches!(self.cur_token().kind, TokenKind::Semicolon) && self.cur_token_on_same_line() {
+        self.expression()?
+      } else {
+        // Note that in our design, we search for return values eagerly including next lines.
+        let start = self.prev_token().span.start;
+        self.builder.nil(Span::new(start, start))
+      };
 
+    self.automatic_semicolon_insertion()?;
+    let end = self.prev_token().span.end;
     let span = Span::new(start, end);
 
     if !self.in_function() {
@@ -624,6 +624,10 @@ impl Parser {
       self.cur_token().span,
       self.cur_token().kind.to_str(),
     ))
+  }
+
+  fn cur_token_on_same_line(&self) -> bool {
+    self.cur_token().line == self.prev_token().line
   }
 }
 
