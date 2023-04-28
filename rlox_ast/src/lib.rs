@@ -67,6 +67,12 @@ pub struct AstNode {
   inner: AstNodeKind,
 }
 
+impl AstNode {
+  pub fn new(span: Span, inner: AstNodeKind) -> Self {
+    Self { span, inner }
+  }
+}
+
 /// Inner data belonging to each Ast Node. This type is intended to be easily cloneable and copiable.
 /// It encodes only the local data, not child/parent relations.
 #[derive(Debug, Clone, Copy)]
@@ -167,34 +173,22 @@ impl SyntaxTreeBuilder {
   }
 
   pub fn string_literal(&mut self, span: Span, raw: SymbolId, value: &'static str) -> AstNodeId {
-    let inner = AstNode {
-      span,
-      inner: AstNodeKind::StrLiteral(raw, value),
-    };
+    let inner = AstNode::new(span, AstNodeKind::StrLiteral(raw, value));
     self.new_node(inner)
   }
 
   pub fn numeric_literal(&mut self, span: Span, raw: SymbolId, value: f64) -> AstNodeId {
-    let inner = AstNode {
-      span,
-      inner: AstNodeKind::NumLiteral(raw, value),
-    };
+    let inner = AstNode::new(span, AstNodeKind::NumLiteral(raw, value));
     self.new_node(inner)
   }
 
   pub fn bool_literal(&mut self, span: Span, value: bool) -> AstNodeId {
-    let inner = AstNode {
-      span,
-      inner: AstNodeKind::BoolLiteral(value),
-    };
+    let inner = AstNode::new(span, AstNodeKind::BoolLiteral(value));
     self.new_node(inner)
   }
 
   pub fn nil(&mut self, span: Span) -> AstNodeId {
-    let inner = AstNode {
-      span,
-      inner: AstNodeKind::Nil,
-    };
+    let inner = AstNode::new(span, AstNodeKind::Nil);
     self.new_node(inner)
   }
 
@@ -207,10 +201,7 @@ impl SyntaxTreeBuilder {
     let start = self.get_span(left).start;
     let end = self.get_span(right).end;
 
-    let inner = AstNode {
-      span: Span::new(start, end),
-      inner: AstNodeKind::LogicExpr(op),
-    };
+    let inner = AstNode::new(Span::new(start, end), AstNodeKind::LogicExpr(op));
 
     let logical_expr = self.new_node(inner);
     append_child!(logical_expr, left, right);
@@ -226,10 +217,7 @@ impl SyntaxTreeBuilder {
     let start = self.get_span(left).start;
     let end = self.get_span(right).end;
 
-    let inner = AstNode {
-      span: Span::new(start, end),
-      inner: AstNodeKind::BinaryExpr(op),
-    };
+    let inner = AstNode::new(Span::new(start, end), AstNodeKind::BinaryExpr(op));
 
     let binary_expr = self.new_node(inner);
     append_child!(binary_expr, left, right);
@@ -237,10 +225,7 @@ impl SyntaxTreeBuilder {
   }
 
   pub fn unary_expression(&mut self, span: Span, op: UnaryOp, arg: AstNodeId) -> AstNodeId {
-    let inner = AstNode {
-      span,
-      inner: AstNodeKind::UnaryExpr(op),
-    };
+    let inner = AstNode::new(span, AstNodeKind::UnaryExpr(op));
 
     let unary_expr = self.new_node(inner);
     append_child!(unary_expr, arg);
@@ -255,10 +240,7 @@ impl SyntaxTreeBuilder {
   ) -> AstNodeId {
     let start = self.get_span(pred).start;
     let end = self.get_span(alt).end;
-    let inner = AstNode {
-      span: Span::new(start, end),
-      inner: AstNodeKind::TernaryExpr,
-    };
+    let inner = AstNode::new(Span::new(start, end), AstNodeKind::TernaryExpr);
 
     let ternary = self.new_node(inner);
     append_child!(ternary, pred, conseq, alt);
@@ -267,10 +249,7 @@ impl SyntaxTreeBuilder {
   }
 
   pub fn expression_statement(&mut self, span: Span, expr: AstNodeId) -> AstNodeId {
-    let inner = AstNode {
-      span,
-      inner: AstNodeKind::ExprStmt,
-    };
+    let inner = AstNode::new(span, AstNodeKind::ExprStmt);
     let stmt = self.new_node(inner);
     append_child!(stmt, expr);
 
@@ -278,10 +257,7 @@ impl SyntaxTreeBuilder {
   }
 
   pub fn start_program(&mut self, start: u32) -> ProgramBuilder {
-    let inner = AstNode {
-      span: Span::new(start, u32::MAX),
-      inner: AstNodeKind::Program,
-    };
+    let inner = AstNode::new(Span::new(start, u32::MAX), AstNodeKind::Program);
     ProgramBuilder(self.new_node(inner))
   }
 
@@ -303,20 +279,14 @@ impl SyntaxTreeBuilder {
     variable: SymbolId,
     init: AstNodeId,
   ) -> AstNodeId {
-    let inner = AstNode {
-      span,
-      inner: AstNodeKind::VarDecl(variable),
-    };
+    let inner = AstNode::new(span, AstNodeKind::VarDecl(variable));
     let decl = self.new_node(inner);
     append_child!(decl, init);
     decl
   }
 
   pub fn variable_reference(&mut self, span: Span, variable: SymbolId) -> AstNodeId {
-    let inner = AstNode {
-      span,
-      inner: AstNodeKind::Var(variable),
-    };
+    let inner = AstNode::new(span, AstNodeKind::Var(variable));
     self.new_node(inner)
   }
 
@@ -326,20 +296,14 @@ impl SyntaxTreeBuilder {
     target: AstNodeId,
     value: AstNodeId,
   ) -> AstNodeId {
-    let inner = AstNode {
-      span,
-      inner: AstNodeKind::Assign,
-    };
+    let inner = AstNode::new(span, AstNodeKind::Assign);
     let assign = self.new_node(inner);
     append_child!(assign, target, value);
     assign
   }
 
   pub fn start_block(&mut self, start: u32) -> BlockBuilder {
-    let inner = AstNode {
-      span: Span::new(start, u32::MAX),
-      inner: AstNodeKind::Block,
-    };
+    let inner = AstNode::new(Span::new(start, u32::MAX), AstNodeKind::Block);
     BlockBuilder(self.new_node(inner))
   }
 
@@ -357,10 +321,7 @@ impl SyntaxTreeBuilder {
   }
 
   pub fn break_statement(&mut self, span: Span) -> AstNodeId {
-    let inner = AstNode {
-      span,
-      inner: AstNodeKind::Break,
-    };
+    let inner = AstNode::new(span, AstNodeKind::Break);
     self.new_node(inner)
   }
 
@@ -371,20 +332,14 @@ impl SyntaxTreeBuilder {
     conseq: AstNodeId,
     alt: AstNodeId,
   ) -> AstNodeId {
-    let inner = AstNode {
-      span,
-      inner: AstNodeKind::IfStmt,
-    };
+    let inner = AstNode::new(span, AstNodeKind::IfStmt);
     let if_stmt = self.new_node(inner);
     append_child!(if_stmt, pred, conseq, alt);
     if_stmt
   }
 
   pub fn while_statement(&mut self, span: Span, pred: AstNodeId, body: AstNodeId) -> AstNodeId {
-    let inner = AstNode {
-      span,
-      inner: AstNodeKind::WhileStmt,
-    };
+    let inner = AstNode::new(span, AstNodeKind::WhileStmt);
     let while_stmt = self.new_node(inner);
     append_child!(while_stmt, pred, body);
     while_stmt
@@ -396,10 +351,7 @@ impl SyntaxTreeBuilder {
     callee: AstNodeId,
     arguments: AstNodeId,
   ) -> AstNodeId {
-    let inner = AstNode {
-      span,
-      inner: AstNodeKind::FnCall,
-    };
+    let inner = AstNode::new(span, AstNodeKind::FnCall);
     let call = self.new_node(inner);
     append_child!(call, callee, arguments);
     call
@@ -407,10 +359,7 @@ impl SyntaxTreeBuilder {
 
   pub fn start_argument_list(&mut self, start: u32) -> ArgListBuilder {
     let span = Span::new(start, u32::MAX);
-    let inner = AstNode {
-      span,
-      inner: AstNodeKind::CallArgList,
-    };
+    let inner = AstNode::new(span, AstNodeKind::CallArgList);
     ArgListBuilder(self.new_node(inner))
   }
 
@@ -437,20 +386,14 @@ impl SyntaxTreeBuilder {
     parameters: AstNodeId,
     body: AstNodeId,
   ) -> AstNodeId {
-    let inner = AstNode {
-      span,
-      inner: AstNodeKind::FnDecl(name),
-    };
+    let inner = AstNode::new(span, AstNodeKind::FnDecl(name));
     let fn_decl = self.new_node(inner);
     append_child!(fn_decl, parameters, body);
     fn_decl
   }
 
   pub fn start_parameter_list(&mut self, start: u32) -> ParamListBuilder {
-    let inner = AstNode {
-      span: Span::new(start, u32::MAX),
-      inner: AstNodeKind::FnParamList,
-    };
+    let inner = AstNode::new(Span::new(start, u32::MAX), AstNodeKind::FnParamList);
     ParamListBuilder(self.new_node(inner))
   }
 
@@ -471,10 +414,7 @@ impl SyntaxTreeBuilder {
   }
 
   pub fn return_statement(&mut self, span: Span, returned: AstNodeId) -> AstNodeId {
-    let inner = AstNode {
-      span,
-      inner: AstNodeKind::Return,
-    };
+    let inner = AstNode::new(span, AstNodeKind::Return);
     let return_stmt = self.new_node(inner);
     append_child!(return_stmt, returned);
     return_stmt
