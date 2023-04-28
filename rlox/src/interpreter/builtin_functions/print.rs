@@ -20,7 +20,7 @@ impl LoxCallable for Print {
       if idx == 0 {
         write!(&mut evaluator.output, "{}", arg).map_err(system_error)?;
       } else {
-        write!(&mut evaluator.output, "{}", arg).map_err(system_error)?;
+        write!(&mut evaluator.output, " {}", arg).map_err(system_error)?;
       }
     }
     writeln!(&mut evaluator.output).map_err(system_error)?;
