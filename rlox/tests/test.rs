@@ -22,6 +22,7 @@ fn test_source(name: &'static str) {
 // Calls test_soruce on each respective file under `TEST_ROOT` directory
 rlox_macros::declare_interpreter_tests! {
   conditionals::if1,
+  expression::assign,
   loops::nested_while,
   loops::simple_while,
   function::print,
