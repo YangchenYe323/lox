@@ -27,6 +27,10 @@ pub enum LoxRuntimeError {
   SystemError(Box<dyn std::error::Error + Send + Sync + 'static>),
 }
 
+pub fn system_error<E: std::error::Error + Send + Sync + 'static>(error: E) -> LoxRuntimeError {
+  LoxRuntimeError::SystemError(Box::new(error))
+}
+
 #[derive(Debug, Error, Diagnostic)]
 #[error("{error}")]
 pub struct SpannedLoxRuntimeError {

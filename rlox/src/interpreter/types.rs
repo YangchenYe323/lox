@@ -1,7 +1,7 @@
 use std::{num::NonZeroUsize, rc::Rc};
 
 use super::scope::Scope;
-use super::{diagnostics::LoxRuntimeError, Evaluator};
+use super::{diagnostics::LoxRuntimeError, Interpreter};
 use rlox_ast::{
   facades::{Block, FnDecl, VarDecl},
   visit::AstVisitor,
@@ -84,7 +84,7 @@ impl std::fmt::Display for ObjectId {
 pub trait LoxCallable {
   fn call(
     &self,
-    evaluator: &mut Evaluator,
+    evaluator: &mut Interpreter,
     arguments: Vec<LoxValueKind>,
   ) -> Result<LoxValueKind, LoxRuntimeError>;
 
@@ -114,7 +114,7 @@ impl Function {
 impl LoxCallable for Function {
   fn call(
     &self,
-    evaluator: &mut Evaluator,
+    evaluator: &mut Interpreter,
     arguments: Vec<LoxValueKind>,
   ) -> Result<LoxValueKind, LoxRuntimeError> {
     // resolve actual arguments

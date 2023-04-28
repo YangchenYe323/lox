@@ -30,19 +30,22 @@ mod runtime;
 mod scope;
 mod types;
 
-pub struct Evaluator {
+/// [Interpreter] manages all the runtime states of a intepreting session, including memory environment,
+/// symbol resolution and an output buffer. It is responsible for interpreting parsed AST constructs.
+pub struct Interpreter {
   environment: Environment,
   context: ExecutionContext,
   active_scope: Rc<Scope>,
+  output: String,
 }
 
-impl Default for Evaluator {
+impl Default for Interpreter {
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl Evaluator {
+impl Interpreter {
   pub fn new() -> Self {
     let context = ExecutionContext::default();
     let (environment, active_scope) = setup_globals();
@@ -50,7 +53,12 @@ impl Evaluator {
       environment,
       context,
       active_scope,
+      output: String::new(),
     }
+  }
+
+  pub fn drain_output(&mut self) -> String {
+    std::mem::take(&mut self.output)
   }
 
   pub fn declare_variable(&mut self, var: SymbolId, value: LoxValueKind) -> ObjectId {
@@ -60,7 +68,11 @@ impl Evaluator {
     object
   }
 
-  pub fn with_scope<T>(&mut self, new_scope: Rc<Scope>, f: impl FnOnce(&mut Evaluator) -> T) -> T {
+  pub fn with_scope<T>(
+    &mut self,
+    new_scope: Rc<Scope>,
+    f: impl FnOnce(&mut Interpreter) -> T,
+  ) -> T {
     let old_scope = Rc::clone(&self.active_scope);
     self.active_scope = new_scope;
     let result = f(self);
@@ -69,7 +81,7 @@ impl Evaluator {
   }
 }
 
-impl AstVisitor for Evaluator {
+impl AstVisitor for Interpreter {
   type Ret = Result<LoxValueKind, SpannedLoxRuntimeError>;
 
   fn visit_program(&mut self, program: Program) -> Self::Ret {
@@ -279,11 +291,11 @@ bitflags! {
   }
 }
 
-impl Evaluator {
+impl Interpreter {
   fn with_context<T>(
     &mut self,
     context: ExecutionContext,
-    f: impl FnOnce(&mut Evaluator) -> T,
+    f: impl FnOnce(&mut Interpreter) -> T,
   ) -> T {
     let old_context = self.context;
     self.context = old_context | context;

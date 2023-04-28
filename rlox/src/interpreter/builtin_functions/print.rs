@@ -1,9 +1,9 @@
 use std::rc::Rc;
 
 use crate::interpreter::{
-  diagnostics::LoxRuntimeError,
+  diagnostics::{system_error, LoxRuntimeError},
   types::{LoxCallable, LoxValueKind},
-  Evaluator,
+  Interpreter,
 };
 
 /// Built in callable to print arbitrary number of objects
@@ -12,17 +12,18 @@ pub struct Print;
 impl LoxCallable for Print {
   fn call(
     &self,
-    _evaluator: &mut Evaluator,
+    evaluator: &mut Interpreter,
     arguments: Vec<LoxValueKind>,
   ) -> Result<LoxValueKind, LoxRuntimeError> {
+    use core::fmt::Write;
     for (idx, arg) in arguments.into_iter().enumerate() {
       if idx == 0 {
-        print!("{}", arg);
+        write!(&mut evaluator.output, "{}", arg).map_err(system_error)?;
       } else {
-        print!(" {}", arg);
+        write!(&mut evaluator.output, "{}", arg).map_err(system_error)?;
       }
     }
-    println!();
+    writeln!(&mut evaluator.output).map_err(system_error)?;
     Ok(LoxValueKind::nil())
   }
 

@@ -3,7 +3,7 @@ use rlox_ast::{facades::Expr, visit::AstVisitor, BinaryOp, UnaryOp};
 use super::{
   diagnostics::{LoxRuntimeError, SpannedLoxRuntimeError},
   types::LoxValueKind,
-  Evaluator,
+  Interpreter,
 };
 
 pub type EvalResult<T, E = LoxRuntimeError> = std::result::Result<T, E>;
@@ -164,7 +164,7 @@ fn greater_equals(
 }
 
 pub(crate) fn logical_and(
-  evaluator: &mut Evaluator,
+  evaluator: &mut Interpreter,
   left: Expr,
   right: Expr,
 ) -> Result<LoxValueKind, SpannedLoxRuntimeError> {
@@ -177,7 +177,7 @@ pub(crate) fn logical_and(
 }
 
 pub(crate) fn logical_or(
-  evaluator: &mut Evaluator,
+  evaluator: &mut Interpreter,
   left: Expr,
   right: Expr,
 ) -> Result<LoxValueKind, SpannedLoxRuntimeError> {

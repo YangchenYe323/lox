@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use miette::Result;
-use rlox::Interpreter;
+use rlox::InterpreterDriver;
 use rustyline::error::ReadlineError;
 use rustyline::history::{FileHistory, History};
 use rustyline::{DefaultEditor, Editor, Helper};
@@ -19,20 +19,20 @@ pub struct Args {
 
 fn main() -> Result<()> {
   let Args { file } = Args::parse();
-  let mut interpreter = Interpreter::default();
+  let mut interpreter = InterpreterDriver::default();
   match file {
     Some(file) => run_file(file, &mut interpreter),
     None => run_interactive(&mut interpreter),
   }
 }
 
-fn run_file(file: PathBuf, interpreter: &mut Interpreter) -> Result<()> {
+fn run_file(file: PathBuf, interpreter: &mut InterpreterDriver) -> Result<()> {
   let source = std::fs::read_to_string(file.as_path()).unwrap();
   let _output = interpreter.run(&source);
   Ok(())
 }
 
-fn run_interactive(interpreter: &mut Interpreter) -> Result<()> {
+fn run_interactive(interpreter: &mut InterpreterDriver) -> Result<()> {
   let mut rl = PromptReader::default();
 
   loop {

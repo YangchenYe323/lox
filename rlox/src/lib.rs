@@ -15,28 +15,28 @@ use rlox_ast::visit::AstVisitor;
 use rlox_ast::{facades::Program, SyntaxTree};
 
 use crate::{
-  interpreter::Evaluator,
+  interpreter::Interpreter,
   parser::{parse_source_program, Parse},
 };
 
 /// The interpreter that handles interpreting and executing source code.
-pub struct Interpreter {
+pub struct InterpreterDriver {
   reporter: GraphicalReportHandler,
-  evaluator: Evaluator,
+  evaluator: Interpreter,
 }
 
-impl Default for Interpreter {
+impl Default for InterpreterDriver {
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl Interpreter {
+impl InterpreterDriver {
   pub fn new() -> Self {
     Self {
       // Use unicode_nocolor to play nicely with writing to files
       reporter: GraphicalReportHandler::new_themed(GraphicalTheme::unicode_nocolor()),
-      evaluator: Evaluator::default(),
+      evaluator: Interpreter::default(),
     }
   }
 
@@ -49,7 +49,10 @@ impl Interpreter {
       let program = Program::new(ptr);
       let evaluation = self.evaluator.visit_program(program);
       match evaluation {
-        Ok(value) => Cow::Owned(value.to_string()),
+        Ok(value) => {
+          print!("{}", self.evaluator.drain_output());
+          Cow::Owned(value.to_string())
+        }
         Err(runtime_error) => {
           self.report_error(runtime_error, source);
           Cow::Borrowed("")
