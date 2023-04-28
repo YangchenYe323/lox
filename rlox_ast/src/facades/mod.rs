@@ -7,9 +7,9 @@
 //!
 //! Facades are building blocks to functinalities like pretty-printing the syntax tree, implementing visitor patterns, etc.
 
-mod expr;
-mod program;
-mod stmt;
+pub mod expr;
+pub mod program;
+pub mod stmt;
 
 use rlox_span::{Span, Spanned};
 
