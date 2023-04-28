@@ -19,6 +19,7 @@ The grammar of my lox implementation has several differences with the book, some
 - [x] Closures
 - [ ] Class, inheritance and dynamic dispatch
 - [x] An REPL terminal client with history support: `cargo run -p rlox`
+- [ ] Garbage Collection (Maybe using reference count?)
 
 #### Bytecode Virtual Machine
 WIP
