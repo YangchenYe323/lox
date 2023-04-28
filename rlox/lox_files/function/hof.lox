@@ -1,0 +1,6 @@
+fun apply_twice(f, data) {
+  f(data);
+  f(data);
+}
+
+apply_twice(print, "A")
