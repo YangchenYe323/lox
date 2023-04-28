@@ -10,6 +10,7 @@ The grammar of my lox implementation has several differences with the book, some
 + C-like ternary expression is implemented.
 + Function formal parameters support default initialization: `fun foo(a = 1, b = "A") {}`, if no explicit default initialization is set, parameter is initialized to `nil` in cases no actual arguments is provided. 
 + Function can handle variable numbers of parameters, arity is not checked by the interpretor itself.
++ Print statement is replaced with a builtin print function which handles arbitrary number of arguments.
 
 #### Tree Walk Interpretor:
 - [x] Evaluating expressions
