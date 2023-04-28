@@ -1,0 +1,16 @@
+fun idGenerator() {
+  var nextId = 0;
+  fun generate() {
+    var id = nextId;
+    nextId = nextId + 1
+    return id;
+  }
+  return generate;
+}
+
+var g1 = idGenerator();
+print(g1())
+print(g1())
+var g2 = idGenerator();
+print(g2())
+print(g2())

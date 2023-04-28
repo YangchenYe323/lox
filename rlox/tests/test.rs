@@ -29,6 +29,7 @@ rlox_macros::declare_output_tests! {
   function::fib,
   function::default,
   function::ret,
+  function::closure,
   comp_errors::print,
   comp_errors::invalid_return,
   comp_errors::invalid_break,

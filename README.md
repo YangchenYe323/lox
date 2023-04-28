@@ -16,7 +16,7 @@ The grammar of my lox implementation has several differences with the book, some
 - [x] Evaluating statements and program state
 - [x] Control flow and loops
 - [x] Functions
-- [ ] Closures
+- [x] Closures
 - [ ] Class, inheritance and dynamic dispatch
 - [x] An REPL terminal client with history support: `cargo run -p rlox`
 

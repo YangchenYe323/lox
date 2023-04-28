@@ -1,0 +1,10 @@
+---
+source: rlox/tests/test.rs
+assertion_line: 19
+expression: output
+---
+0
+1
+0
+1
+

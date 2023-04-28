@@ -4,6 +4,8 @@ use rlox_ast::{
   facades::{Block, FnDecl, VarDecl},
   visit::AstVisitor,
 };
+use rlox_span::SymbolId;
+use rustc_hash::FxHashMap;
 
 use super::{diagnostics::LoxRuntimeError, Evaluator};
 
@@ -93,15 +95,18 @@ pub trait LoxCallable {
 
 /// [Function] is a user-defined function in lox language
 pub struct Function {
+  // The captured environment of the enclosing scope.
+  closure: FxHashMap<SymbolId, ObjectId>,
   formal_parameters: Vec<VarDecl>,
   body: Block,
 }
 
 impl Function {
-  pub fn new(handle: FnDecl) -> Self {
+  pub fn new(handle: FnDecl, closure: FxHashMap<SymbolId, ObjectId>) -> Self {
     let formal_parameters = handle.parameter_list().parameters().collect();
     let body = handle.body();
     Self {
+      closure,
       formal_parameters,
       body,
     }
@@ -123,6 +128,9 @@ impl LoxCallable for Function {
 
     assert_eq!(arguments.len(), self.formal_parameters.len());
 
+    // Firstly apply the closure scope
+    evaluator.environment.apply_scope(&self.closure);
+    // Secondly apply the formal parameter scope
     evaluator.environment.enter_scope();
     // bind formal parameters to argyments
     for (var, value) in self.formal_parameters.iter().zip(arguments.into_iter()) {
@@ -133,6 +141,10 @@ impl LoxCallable for Function {
     let result = evaluator
       .visit_block(self.body)
       .map_err(LoxRuntimeError::from);
+
+    // Exit formal parameter scope
+    evaluator.environment.exit_scope();
+    // Exit closure
     evaluator.environment.exit_scope();
 
     result

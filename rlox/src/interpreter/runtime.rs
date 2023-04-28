@@ -76,6 +76,10 @@ impl Environment {
     }
   }
 
+  pub fn apply_scope(&mut self, scope: &FxHashMap<SymbolId, ObjectId>) {
+    self.scopes.push(scope.clone());
+  }
+
   pub fn enter_scope(&mut self) {
     self.scopes.push(FxHashMap::default());
   }

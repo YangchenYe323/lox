@@ -116,8 +116,9 @@ impl AstVisitor for Evaluator {
   }
 
   fn visit_function_declaration(&mut self, fn_decl: FnDecl) -> Self::Ret {
+    let closure = self.environment.current_scope().clone();
     let name = fn_decl.name();
-    let function = Function::new(fn_decl);
+    let function = Function::new(fn_decl, closure);
     self
       .environment
       .define(name, LoxValueKind::Callable(Rc::new(function)));
