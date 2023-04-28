@@ -9,25 +9,31 @@ use rlox_ast::{
     Var, VarDecl, WhileStmt,
   },
   visit::AstVisitor,
-  LogicalOp,
+  LogicalOp, INTERNER,
 };
+use rlox_span::SymbolId;
+use rustc_hash::FxHashMap;
 
 use self::{
+  builtin_functions::{builtin_print, builtin_time},
   diagnostics::{LoxRuntimeError, SpannedLoxRuntimeError, SpannedLoxRuntimeErrorWrapper},
   eval::{logical_and, logical_or, BinaryEval, UnaryEval},
-  runtime::{populate_builtin_globals, Environment},
-  types::{Function, LoxValueKind},
+  runtime::Environment,
+  scope::Scope,
+  types::{Function, LoxValueKind, ObjectId},
 };
 
 mod builtin_functions;
 mod diagnostics;
 mod eval;
 mod runtime;
+mod scope;
 mod types;
 
 pub struct Evaluator {
   environment: Environment,
   context: ExecutionContext,
+  active_scope: Rc<Scope>,
 }
 
 impl Default for Evaluator {
@@ -38,14 +44,28 @@ impl Default for Evaluator {
 
 impl Evaluator {
   pub fn new() -> Self {
-    let mut environment = Environment::default();
-    environment.enter_scope();
-    populate_builtin_globals(&mut environment);
     let context = ExecutionContext::default();
+    let (environment, active_scope) = setup_globals();
     Self {
       environment,
       context,
+      active_scope,
     }
+  }
+
+  pub fn declare_variable(&mut self, var: SymbolId, value: LoxValueKind) -> ObjectId {
+    let object = self.environment.new_object();
+    self.environment.assign(object, value);
+    self.active_scope = Rc::new(self.active_scope.define(var, object));
+    object
+  }
+
+  pub fn with_scope<T>(&mut self, new_scope: Rc<Scope>, f: impl FnOnce(&mut Evaluator) -> T) -> T {
+    let old_scope = Rc::clone(&self.active_scope);
+    self.active_scope = new_scope;
+    let result = f(self);
+    self.active_scope = old_scope;
+    result
   }
 }
 
@@ -111,17 +131,20 @@ impl AstVisitor for Evaluator {
   fn visit_variable_declaration(&mut self, var_decl: VarDecl) -> Self::Ret {
     let symbol = var_decl.var_symbol();
     let init = self.visit_expression(var_decl.init_expr())?;
-    self.environment.define(symbol, init);
+    self.declare_variable(symbol, init);
     Ok(LoxValueKind::nil())
   }
 
   fn visit_function_declaration(&mut self, fn_decl: FnDecl) -> Self::Ret {
-    let closure = self.environment.current_scope().clone();
+    // This ensures that the function can find itself in the closure to enable recursion.
     let name = fn_decl.name();
+    let object = self.declare_variable(name, LoxValueKind::nil());
+    let closure = Rc::clone(&self.active_scope);
+
     let function = Function::new(fn_decl, closure);
     self
       .environment
-      .define(name, LoxValueKind::Callable(Rc::new(function)));
+      .assign(object, LoxValueKind::Callable(Rc::new(function)));
     Ok(LoxValueKind::nil())
   }
 
@@ -131,16 +154,16 @@ impl AstVisitor for Evaluator {
   }
 
   fn visit_block(&mut self, block: Block) -> Self::Ret {
-    self.environment.enter_scope();
-    let mut value = LoxValueKind::nil();
-    for stmt in block.statements() {
-      value = self.visit_statement(stmt)?;
-      if self.to_break_from_loop() | self.to_return() {
-        break;
+    self.with_scope(self.active_scope.spawn_empty_child(), |evaluator| {
+      let mut value = LoxValueKind::nil();
+      for stmt in block.statements() {
+        value = evaluator.visit_statement(stmt)?;
+        if evaluator.to_break_from_loop() | evaluator.to_return() {
+          break;
+        }
       }
-    }
-    self.environment.exit_scope();
-    Ok(value)
+      Ok(value)
+    })
   }
 
   fn visit_expression(&mut self, expr: Expr) -> Self::Ret {
@@ -179,7 +202,7 @@ impl AstVisitor for Evaluator {
     let target = expr.target();
     let value = expr.value();
     let target = self
-      .environment
+      .active_scope
       .get_lvalue(target)
       .ok_or_else(|| expr.wrap(LoxRuntimeError::UnresolvedReference))?;
     let value = self.visit_expression(value)?;
@@ -234,10 +257,11 @@ impl AstVisitor for Evaluator {
 
   fn visit_var_reference(&mut self, var_reference: Var) -> Self::Ret {
     let reference = var_reference.var_symbol();
-    self
-      .environment
-      .get_rvalue(reference)
-      .ok_or_else(|| var_reference.wrap(LoxRuntimeError::UnresolvedReference))
+    let lvalue = self
+      .active_scope
+      .get_lvalue_symbol(reference)
+      .ok_or_else(|| var_reference.wrap(LoxRuntimeError::UnresolvedReference))?;
+    Ok(self.environment.get_rvalue(lvalue).unwrap())
   }
 
   fn visit_nil(&mut self, _nil: NilLit) -> Self::Ret {
@@ -279,4 +303,24 @@ impl Evaluator {
       .context
       .contains(ExecutionContext::IN_FUNCTION | ExecutionContext::RETURN)
   }
+}
+
+fn setup_globals() -> (Environment, Rc<Scope>) {
+  let mut env = Environment::default();
+  let mut symbols = FxHashMap::default();
+  populate_global(&mut env, &mut symbols, "time", builtin_time());
+  populate_global(&mut env, &mut symbols, "print", builtin_print());
+  (env, Rc::new(Scope::new(symbols, None)))
+}
+
+fn populate_global(
+  environment: &mut Environment,
+  symbols: &mut FxHashMap<SymbolId, ObjectId>,
+  name: &'static str,
+  value: LoxValueKind,
+) {
+  let symbol = INTERNER.with_borrow_mut(|interner| interner.intern(name));
+  let object = environment.new_object();
+  symbols.insert(symbol, object);
+  environment.assign(object, value);
 }

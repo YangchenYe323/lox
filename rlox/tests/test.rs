@@ -30,6 +30,7 @@ rlox_macros::declare_interpreter_tests! {
   function::default,
   function::ret,
   function::closure,
+  function::scope_rule,
   comp_errors::print,
   comp_errors::invalid_return,
   comp_errors::invalid_break,

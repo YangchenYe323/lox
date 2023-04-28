@@ -2,25 +2,16 @@ use std::num::NonZeroUsize;
 
 use rustc_hash::FxHashMap;
 
-use rlox_span::SymbolId;
-
-use rlox_ast::facades::AssignTarget;
-use rlox_ast::INTERNER;
-
-use super::builtin_functions::builtin_print;
-use super::builtin_functions::builtin_time;
 use super::types::LoxValueKind;
 use super::types::ObjectId;
 
 /// [Environment] simulates the runtime environment of the running program,
 /// which contains:
 /// 1. A simulation of the memory model as a mapping from [ObjectId] -> [LoxValueKind]
-/// 2. Scope chain as a chained mapping from [SymbolId] -> [ObjectId]
-/// 3. Dummy memory allocator with just a bump of [ObjectId]
+/// 2. Dummy memory allocator with just a bump of [ObjectId]
 pub struct Environment {
   memory: FxHashMap<ObjectId, LoxValueKind>,
-  scopes: Vec<FxHashMap<SymbolId, ObjectId>>,
-  next_addr: usize,
+  next_object: usize,
 }
 
 impl Default for Environment {
@@ -33,78 +24,31 @@ impl Environment {
   pub fn new() -> Self {
     Self {
       memory: FxHashMap::default(),
-      // global scope
-      scopes: vec![],
-      next_addr: 1,
+      next_object: 1,
     }
-  }
-
-  pub fn define(&mut self, symbol: SymbolId, value: LoxValueKind) {
-    let id = self.new_object();
-    self.current_scope().insert(symbol, id);
-    self.memory.insert(id, value);
   }
 
   pub fn assign(&mut self, object: ObjectId, value: LoxValueKind) {
     self.memory.insert(object, value);
   }
 
-  pub fn get_rvalue(&mut self, symbol: SymbolId) -> Option<LoxValueKind> {
-    for idx in (0..self.scopes.len()).rev() {
-      let scope = &mut self.scopes[idx];
-      if let Some(object) = scope.get(&symbol) {
-        return self.memory.get(object).cloned();
-      }
-    }
-    None
+  pub fn get_rvalue(&mut self, object: ObjectId) -> Option<LoxValueKind> {
+    self.memory.get(&object).cloned()
   }
 
-  /// l-value corresponds to the object_id associated with the assignment target, which is
-  /// roughly the memory address that can be written to for assigning to this variable.
-  pub fn get_lvalue(&mut self, target: AssignTarget) -> Option<ObjectId> {
-    match target {
-      AssignTarget::Ident(var) => {
-        let symbol = var.var_symbol();
-        for idx in (0..self.scopes.len()).rev() {
-          let scope = &mut self.scopes[idx];
-          if let Some(object) = scope.get(&symbol) {
-            return Some(*object);
-          }
-        }
-        None
-      }
-    }
-  }
-
-  pub fn apply_scope(&mut self, scope: &FxHashMap<SymbolId, ObjectId>) {
-    self.scopes.push(scope.clone());
-  }
-
-  pub fn enter_scope(&mut self) {
-    self.scopes.push(FxHashMap::default());
-  }
-
-  pub fn exit_scope(&mut self) {
-    self.scopes.pop();
-  }
-
-  pub fn current_scope(&mut self) -> &mut FxHashMap<SymbolId, ObjectId> {
-    self.scopes.last_mut().unwrap()
-  }
-
-  fn new_object(&mut self) -> ObjectId {
-    let id = ObjectId::Id(unsafe { NonZeroUsize::new_unchecked(self.next_addr) });
-    self.next_addr += 1;
+  pub fn new_object(&mut self) -> ObjectId {
+    let id = ObjectId::Id(unsafe { NonZeroUsize::new_unchecked(self.next_object) });
+    self.next_object += 1;
     id
   }
 }
 
-pub fn populate_builtin_globals(environment: &mut Environment) {
-  populate_global(environment, "time", builtin_time());
-  populate_global(environment, "print", builtin_print());
-}
+// pub fn populate_builtin_globals(environment: &mut Environment) {
+//   populate_global(environment, "time", builtin_time());
+//   populate_global(environment, "print", builtin_print());
+// }
 
-fn populate_global(environment: &mut Environment, name: &'static str, value: LoxValueKind) {
-  let symbol = INTERNER.with_borrow_mut(|interner| interner.intern(name));
-  environment.define(symbol, value);
-}
+// fn populate_global(environment: &mut Environment, name: &'static str, value: LoxValueKind) {
+//   let symbol = INTERNER.with_borrow_mut(|interner| interner.intern(name));
+//   environment.define(symbol, value);
+// }
