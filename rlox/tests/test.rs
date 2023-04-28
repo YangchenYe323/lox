@@ -20,7 +20,7 @@ fn test_source(name: &'static str) {
 }
 
 // Calls test_soruce on each respective file under `TEST_ROOT` directory
-rlox_macros::declare_output_tests! {
+rlox_macros::declare_interpreter_tests! {
   conditionals::if1,
   loops::nested_while,
   loops::simple_while,
