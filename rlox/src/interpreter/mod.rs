@@ -60,25 +60,6 @@ impl Interpreter {
   pub fn drain_output(&mut self) -> String {
     std::mem::take(&mut self.output)
   }
-
-  pub fn declare_variable(&mut self, var: SymbolId, value: LoxValueKind) -> ObjectId {
-    let object = self.environment.new_object();
-    self.environment.assign(object, value);
-    self.active_scope = Rc::new(self.active_scope.define(var, object));
-    object
-  }
-
-  pub fn with_scope<T>(
-    &mut self,
-    new_scope: Rc<Scope>,
-    f: impl FnOnce(&mut Interpreter) -> T,
-  ) -> T {
-    let old_scope = Rc::clone(&self.active_scope);
-    self.active_scope = new_scope;
-    let result = f(self);
-    self.active_scope = old_scope;
-    result
-  }
 }
 
 impl AstVisitor for Interpreter {
@@ -273,7 +254,7 @@ impl AstVisitor for Interpreter {
       .active_scope
       .get_lvalue_symbol(reference)
       .ok_or_else(|| var_reference.wrap(LoxRuntimeError::UnresolvedReference))?;
-    Ok(self.environment.get_rvalue(lvalue).unwrap())
+    Ok(self.environment.get_rvalue(lvalue))
   }
 
   fn visit_nil(&mut self, _nil: NilLit) -> Self::Ret {
@@ -301,6 +282,21 @@ impl Interpreter {
     self.context = old_context | context;
     let result = f(self);
     self.context = old_context;
+    result
+  }
+
+  fn declare_variable(&mut self, var: SymbolId, value: LoxValueKind) -> ObjectId {
+    let object = self.environment.new_object();
+    self.environment.assign(object, value);
+    self.active_scope = Rc::new(self.active_scope.define(var, object));
+    object
+  }
+
+  fn with_scope<T>(&mut self, new_scope: Rc<Scope>, f: impl FnOnce(&mut Interpreter) -> T) -> T {
+    let old_scope = Rc::clone(&self.active_scope);
+    self.active_scope = new_scope;
+    let result = f(self);
+    self.active_scope = old_scope;
     result
   }
 

@@ -1,7 +1,5 @@
 use std::num::NonZeroUsize;
 
-use rustc_hash::FxHashMap;
-
 use super::types::LoxValueKind;
 use super::types::ObjectId;
 
@@ -10,8 +8,7 @@ use super::types::ObjectId;
 /// 1. A simulation of the memory model as a mapping from [ObjectId] -> [LoxValueKind]
 /// 2. Dummy memory allocator with just a bump of [ObjectId]
 pub struct Environment {
-  memory: FxHashMap<ObjectId, LoxValueKind>,
-  next_object: usize,
+  memory: Vec<LoxValueKind>,
 }
 
 impl Default for Environment {
@@ -22,23 +19,34 @@ impl Default for Environment {
 
 impl Environment {
   pub fn new() -> Self {
-    Self {
-      memory: FxHashMap::default(),
-      next_object: 1,
-    }
+    Self { memory: vec![] }
   }
 
   pub fn assign(&mut self, object: ObjectId, value: LoxValueKind) {
-    self.memory.insert(object, value);
+    let addr = Self::to_addr(object);
+    assert!(addr < self.memory.len());
+    self.memory[addr] = value;
   }
 
-  pub fn get_rvalue(&mut self, object: ObjectId) -> Option<LoxValueKind> {
-    self.memory.get(&object).cloned()
+  pub fn get_rvalue(&mut self, object: ObjectId) -> LoxValueKind {
+    let addr = Self::to_addr(object);
+    assert!(addr < self.memory.len());
+    self.memory[addr].clone()
   }
 
   pub fn new_object(&mut self) -> ObjectId {
-    let id = ObjectId::Id(unsafe { NonZeroUsize::new_unchecked(self.next_object) });
-    self.next_object += 1;
-    id
+    self.memory.push(LoxValueKind::nil());
+    let next_addr = self.memory.len();
+
+    ObjectId::Id(unsafe { NonZeroUsize::new_unchecked(next_addr) })
+  }
+
+  /// Maps an [ObjectId] to internal address used.
+  // TODO: Propagate nil pointer dereference as would be used in class
+  fn to_addr(object: ObjectId) -> usize {
+    let ObjectId::Id(id) = object else {
+      unreachable!();
+    };
+    usize::from(id) - 1
   }
 }

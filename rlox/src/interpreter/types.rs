@@ -15,7 +15,7 @@ pub enum LoxValueKind {
   Number(f64),
   String(String),
   Boolean(bool),
-  Object(ObjectId),
+  ObjectId(ObjectId),
   Callable(Rc<dyn LoxCallable>),
 }
 
@@ -25,7 +25,7 @@ impl std::fmt::Display for LoxValueKind {
       LoxValueKind::Number(number) => number.fmt(f),
       LoxValueKind::String(s) => s.fmt(f),
       LoxValueKind::Boolean(b) => b.fmt(f),
-      LoxValueKind::Object(object) => object.fmt(f),
+      LoxValueKind::ObjectId(object) => object.fmt(f),
       LoxValueKind::Callable(_) => "lox callable".fmt(f),
     }
   }
@@ -34,7 +34,7 @@ impl std::fmt::Display for LoxValueKind {
 impl LoxValueKind {
   #[inline(always)]
   pub fn nil() -> Self {
-    Self::Object(ObjectId::Nil)
+    Self::ObjectId(ObjectId::Nil)
   }
 
   pub fn is_truthful(&self) -> bool {
@@ -42,7 +42,7 @@ impl LoxValueKind {
       LoxValueKind::Number(n) => *n != 0.0,
       LoxValueKind::String(s) => !s.is_empty(),
       LoxValueKind::Boolean(b) => *b,
-      LoxValueKind::Object(o) => !matches!(o, ObjectId::Nil),
+      LoxValueKind::ObjectId(o) => !matches!(o, ObjectId::Nil),
       LoxValueKind::Callable(_) => true,
     }
   }
@@ -52,7 +52,7 @@ impl LoxValueKind {
       LoxValueKind::Number(_) => "Number",
       LoxValueKind::String(_) => "String",
       LoxValueKind::Boolean(_) => "Boolean",
-      LoxValueKind::Object(o) => match o {
+      LoxValueKind::ObjectId(o) => match o {
         ObjectId::Nil => "Nil",
         ObjectId::Id(_) => "Object",
       },
@@ -61,13 +61,15 @@ impl LoxValueKind {
   }
 }
 
+pub type ValidAddress = NonZeroUsize;
+
 /// Lox's abstraction of the concept of "Memory Reference". Each variable is mapped to an [ObjectId],
 /// and a lox object might store references to other objects, i.e., they might store [ObjectID]s internally.
 /// Note that Nil is a special case of [ObjectId]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ObjectId {
   Nil,
-  Id(NonZeroUsize),
+  Id(ValidAddress),
 }
 
 impl std::fmt::Display for ObjectId {
