@@ -42,13 +42,3 @@ impl Environment {
     id
   }
 }
-
-// pub fn populate_builtin_globals(environment: &mut Environment) {
-//   populate_global(environment, "time", builtin_time());
-//   populate_global(environment, "print", builtin_print());
-// }
-
-// fn populate_global(environment: &mut Environment, name: &'static str, value: LoxValueKind) {
-//   let symbol = INTERNER.with_borrow_mut(|interner| interner.intern(name));
-//   environment.define(symbol, value);
-// }
