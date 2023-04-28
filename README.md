@@ -11,6 +11,15 @@ The grammar of my lox implementation has several differences with the book, some
 + Function formal parameters support default initialization: `fun foo(a = 1, b = "A") {}`, if no explicit default initialization is set, parameter is initialized to `nil` in cases no actual arguments is provided. 
 + Function can handle variable numbers of parameters, arity is not checked by the interpretor itself.
 + Print statement is replaced with a builtin print function which handles arbitrary number of arguments.
++ Shadow declaration is not an error:
+```
+var a = 1;
+var a = 2; // OK
+```
+```
+var a = 1;
+var a = a + 1; // OK: a = 2
+```
 
 #### Tree Walk Interpretor:
 - [x] Evaluating expressions
