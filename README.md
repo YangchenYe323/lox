@@ -11,6 +11,7 @@ The grammar of my lox implementation has several differences with the book, some
 + Function formal parameters support default initialization: `fun foo(a = 1, b = "A") {}`, if no explicit default initialization is set, parameter is initialized to `nil` in cases no actual arguments is provided. 
 + Function can handle variable numbers of parameters, arity is not checked by the interpretor itself.
 + Print statement is replaced with a builtin print function which handles arbitrary number of arguments.
++ Block scope is implementd at runtime rather than compile time, using the aproach of persistent runtime scope chain (See [scope.rs](/rlox/src/interpreter/scope.rs)
 
 #### Tree Walk Interpretor:
 - [x] Evaluating expressions
@@ -18,6 +19,7 @@ The grammar of my lox implementation has several differences with the book, some
 - [x] Control flow and loops
 - [x] Functions
 - [x] Closures
+- [x] Block level scoping rules
 - [ ] Class, inheritance and dynamic dispatch
 - [x] An REPL terminal client with history support: `cargo run -p rlox`
 - [ ] Garbage Collection (Maybe using reference count?)
