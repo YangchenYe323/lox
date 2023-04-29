@@ -1,0 +1,12 @@
+class A {
+  class foo() {
+    var a = A("STATIC");
+    return a.val;
+  }
+
+  init(val) {
+    this.val = val;
+  }
+}
+
+print(A.foo()) // STATIC
