@@ -149,6 +149,10 @@ impl LoxCallable for Function {
         .map_err(LoxRuntimeError::from)?;
 
       if self.is_init {
+        if !matches!(ret, LoxValueKind::Nil) {
+          println!("{:?}", ret);
+          return Err(LoxRuntimeError::ReturnFromInit);
+        }
         let this_var = INTERNER.with_borrow_mut(|i| i.intern("this"));
         let this_ref = evaluator.active_scope.get_lvalue_symbol(this_var).unwrap();
         let LoxValueKind::ObjectId(this_value) = evaluator.environment.get_rvalue(this_ref) else { unreachable!() };

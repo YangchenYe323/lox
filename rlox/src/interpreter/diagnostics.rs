@@ -25,8 +25,10 @@ pub enum LoxRuntimeError {
   InvalidMemberAccess(/* type */ &'static str),
   #[error("Runtime Error: Object has no property {0}")]
   NoSuchProperty(/* property */ &'static str),
-  #[error("Object of type {0} is not callable")]
+  #[error("RuntimeError: Object of type {0} is not callable")]
   InalidCall(&'static str),
+  #[error("RuntimeError: Cannot return from initializer")]
+  ReturnFromInit,
   /// A catch-all case for all non-lox related error produced by rust code itself
   #[error("{0}")]
   SystemError(Box<dyn std::error::Error + Send + Sync + 'static>),

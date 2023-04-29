@@ -175,6 +175,12 @@ impl AstVisitor for Interpreter {
           break;
         }
       }
+
+      // When block is invoked in function, don't implicitly return the last expression
+      if !evaluator.to_return() && evaluator.in_function() {
+        return Ok(LoxValueKind::nil());
+      }
+
       Ok(value)
     })
   }
@@ -386,6 +392,10 @@ impl Interpreter {
     self
       .context
       .contains(ExecutionContext::IN_FUNCTION | ExecutionContext::RETURN)
+  }
+
+  fn in_function(&self) -> bool {
+    self.context.contains(ExecutionContext::IN_FUNCTION)
   }
 }
 

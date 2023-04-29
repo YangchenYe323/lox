@@ -43,4 +43,5 @@ rlox_macros::declare_interpreter_tests! {
   comp_errors::invalid_break,
   comp_errors::params,
   comp_errors::args,
+  runtime_errors::init_ret,
 }

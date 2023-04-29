@@ -1,0 +1,7 @@
+class InvalidRet {
+  init() {
+    return 1;
+  }
+}
+
+var a = InvalidRet();
