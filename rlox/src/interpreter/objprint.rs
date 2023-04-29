@@ -2,7 +2,7 @@ use rlox_ast::INTERNER;
 
 use super::{
   runtime::Environment,
-  types::{LoxClass, LoxInstance, LoxValueKind, ObjectId},
+  types::{LoxClass, LoxInstance, LoxValueKind},
 };
 
 pub trait Printable {
@@ -31,14 +31,12 @@ impl Printable for LoxValueKind {
         "Callable({})",
         INTERNER.with_borrow(|interner| interner.get(callable.name()))
       ),
-      LoxValueKind::ObjectId(id) => match id {
-        ObjectId::Nil => write!(output, "nil"),
-        ObjectId::Id(_) => {
-          // Follow the pointer
-          let val = environment.get_rvalue(*id);
-          val.print(environment, output)
-        }
-      },
+      LoxValueKind::Nil => write!(output, "nil"),
+      LoxValueKind::ObjectId(id) => {
+        // Follow the pointer
+        let val = environment.get_rvalue(*id);
+        val.print(environment, output)
+      }
       LoxValueKind::Class(c) => c.print(environment, output),
       LoxValueKind::Object(o) => o.print(environment, output),
     }

@@ -23,6 +23,7 @@ pub enum LoxValueKind {
   Boolean(bool),
   Callable(Rc<dyn LoxCallable>),
   ObjectId(ObjectId),
+  Nil,
 
   // Internal values, no user variable would directly store these.
   Class(Rc<LoxClass>),
@@ -39,6 +40,7 @@ impl std::fmt::Debug for LoxValueKind {
       Self::ObjectId(arg0) => f.debug_tuple("ObjectId").field(arg0).finish(),
       Self::Class(arg0) => f.debug_tuple("Class").field(arg0).finish(),
       Self::Object(arg0) => f.debug_tuple("Object").field(arg0).finish(),
+      Self::Nil => f.debug_tuple("Nil").finish(),
     }
   }
 }
@@ -46,7 +48,7 @@ impl std::fmt::Debug for LoxValueKind {
 impl LoxValueKind {
   #[inline(always)]
   pub fn nil() -> Self {
-    Self::ObjectId(ObjectId::Nil)
+    Self::Nil
   }
 
   pub fn is_truthful(&self) -> bool {
@@ -54,7 +56,8 @@ impl LoxValueKind {
       LoxValueKind::Number(n) => *n != 0.0,
       LoxValueKind::String(s) => !s.is_empty(),
       LoxValueKind::Boolean(b) => *b,
-      LoxValueKind::ObjectId(o) => !matches!(o, ObjectId::Nil),
+      LoxValueKind::ObjectId(_) => true,
+      LoxValueKind::Nil => false,
       LoxValueKind::Callable(_) => true,
       _ => unreachable!(),
     }
@@ -65,26 +68,20 @@ impl LoxValueKind {
       LoxValueKind::Number(_) => "Number",
       LoxValueKind::String(_) => "String",
       LoxValueKind::Boolean(_) => "Boolean",
-      LoxValueKind::ObjectId(o) => match o {
-        ObjectId::Nil => "Nil",
-        ObjectId::Id(_) => "Object",
-      },
+      LoxValueKind::ObjectId(_) => "Object",
       LoxValueKind::Callable(_) => "Callable",
+      LoxValueKind::Nil => "Nil",
+      LoxValueKind::Class(_) => "Class",
       _ => unreachable!(),
     }
   }
 }
 
-pub type ValidAddress = NonZeroUsize;
-
 /// Lox's abstraction of the concept of "Memory Reference". Each variable is mapped to an [ObjectId],
 /// and a lox object might store references to other objects, i.e., they might store [ObjectID]s internally.
 /// Note that Nil is a special case of [ObjectId]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum ObjectId {
-  Nil,
-  Id(ValidAddress),
-}
+pub struct ObjectId(pub NonZeroUsize);
 
 /// [LoxCallable] trait describes a lox value that can be called, e.g., a
 /// user defined function or an interpreter built-in function.

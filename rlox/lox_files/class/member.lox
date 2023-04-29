@@ -1,0 +1,10 @@
+class A {}
+
+var a = A()
+var b = a
+a.c = 123
+print(b.c)
+print(a == b)
+var c = A()
+c.c = 123
+print(a == c)

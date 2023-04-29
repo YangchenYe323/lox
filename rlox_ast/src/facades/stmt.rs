@@ -55,7 +55,7 @@ impl Spanned for Stmt {
       Stmt::Break(s) => s.span(),
       Stmt::FnDecl(s) => s.span(),
       Stmt::Return(s) => s.span(),
-      Self::ClassDecl(s) => s.span(),
+      Stmt::ClassDecl(s) => s.span(),
     }
   }
 }

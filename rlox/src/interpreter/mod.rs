@@ -4,9 +4,9 @@ use bitflags::bitflags;
 
 use rlox_ast::{
   facades::{
-    AssignExpr, BinaryExpr, Block, BoolLit, BreakStmt, CallExpr, ClassDecl, Expr, ExprStmt, FnDecl,
-    IfStmt, LogicExpr, NilLit, NumericLit, Program, ReturnStmt, Stmt, StringLit, TernaryExpr,
-    UnaryExpr, Var, VarDecl, WhileStmt,
+    AssignExpr, AssignTarget, BinaryExpr, Block, BoolLit, BreakStmt, CallExpr, ClassDecl, Expr,
+    ExprStmt, FnDecl, IfStmt, LogicExpr, MemberExpr, NilLit, NumericLit, Program, ReturnStmt, Stmt,
+    StringLit, TernaryExpr, UnaryExpr, Var, VarDecl, WhileStmt,
   },
   visit::AstVisitor,
   LogicalOp, INTERNER,
@@ -190,7 +190,15 @@ impl AstVisitor for Interpreter {
       Expr::Bool(e) => self.visit_bool_literal(e),
       Expr::Var(e) => self.visit_var_reference(e),
       Expr::Nil(e) => self.visit_nil(e),
+      Expr::Member(e) => self.visit_member_expression(e),
     }
+  }
+
+  fn visit_member_expression(&mut self, member_expr: MemberExpr) -> Self::Ret {
+    let lvalue = self
+      .resolve_lvalue(AssignTarget::Member(member_expr))
+      .map_err(|e| member_expr.wrap(e))?;
+    Ok(self.environment.get_rvalue(lvalue))
   }
 
   fn visit_call_expression(&mut self, call_expr: CallExpr) -> Self::Ret {
@@ -221,10 +229,7 @@ impl AstVisitor for Interpreter {
   fn visit_assignment_expression(&mut self, expr: AssignExpr) -> Self::Ret {
     let target = expr.target();
     let value = expr.value();
-    let target = self
-      .active_scope
-      .get_lvalue(target)
-      .ok_or_else(|| expr.wrap(LoxRuntimeError::UnresolvedReference))?;
+    let target = self.resolve_lvalue(target).map_err(|e| expr.wrap(e))?;
     let value = self.visit_expression(value)?;
     self.environment.assign(target, value.clone());
     Ok(value)
@@ -331,6 +336,37 @@ impl Interpreter {
     self
       .context
       .contains(ExecutionContext::IN_LOOP | ExecutionContext::BREAK)
+  }
+
+  fn resolve_lvalue(&mut self, target: AssignTarget) -> Result<ObjectId, LoxRuntimeError> {
+    match target {
+      AssignTarget::Ident(var) => self
+        .active_scope
+        .get_lvalue_symbol(var.var_symbol())
+        .ok_or_else(|| LoxRuntimeError::UnresolvedReference),
+      AssignTarget::Member(member) => {
+        let object = self
+          .visit_expression(member.object())
+          .map_err(LoxRuntimeError::from)?;
+
+        // We can't do "string".c or 1.c
+        let LoxValueKind::ObjectId(id) = object else {
+          return Err(LoxRuntimeError::InvalidMemberAccess(object.type_name()));
+        };
+        let LoxValueKind::Object(mut object) = self.environment.get_rvalue(id) else {
+          unreachable!()
+        };
+
+        let property = object
+          .fields
+          .entry(member.property())
+          .or_insert_with(|| self.environment.new_object());
+        let property = *property;
+        self.environment.assign(id, LoxValueKind::Object(object));
+
+        Ok(property)
+      }
+    }
   }
 
   fn to_return(&self) -> bool {

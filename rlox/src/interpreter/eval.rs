@@ -98,6 +98,10 @@ fn equals(left_operand: &LoxValueKind, right_operand: &LoxValueKind) -> EvalResu
   match (left_operand, right_operand) {
     (LoxValueKind::Number(l), LoxValueKind::Number(r)) => Ok(LoxValueKind::Boolean(l == r)),
     (LoxValueKind::String(l), LoxValueKind::String(r)) => Ok(LoxValueKind::Boolean(l == r)),
+    (LoxValueKind::ObjectId(id1), LoxValueKind::ObjectId(id2)) => {
+      Ok(LoxValueKind::Boolean(id1 == id2))
+    }
+    (LoxValueKind::Nil, LoxValueKind::Nil) => Ok(LoxValueKind::Boolean(true)),
     _ => Ok(LoxValueKind::Boolean(false)),
   }
 }
@@ -106,11 +110,8 @@ fn not_equals(
   left_operand: &LoxValueKind,
   right_operand: &LoxValueKind,
 ) -> EvalResult<LoxValueKind> {
-  match (left_operand, right_operand) {
-    (LoxValueKind::Number(l), LoxValueKind::Number(r)) => Ok(LoxValueKind::Boolean(l != r)),
-    (LoxValueKind::String(l), LoxValueKind::String(r)) => Ok(LoxValueKind::Boolean(l != r)),
-    _ => Ok(LoxValueKind::Boolean(false)),
-  }
+  let LoxValueKind::Boolean(b) = equals(left_operand, right_operand)? else { unreachable!() };
+  Ok(LoxValueKind::Boolean(!b))
 }
 
 fn less(left_operand: &LoxValueKind, right_operand: &LoxValueKind) -> EvalResult<LoxValueKind> {

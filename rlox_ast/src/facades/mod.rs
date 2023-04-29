@@ -17,7 +17,7 @@ use super::{AstNode, AstNodeId, NODE_ARENA};
 
 pub use self::expr::{
   Args, AssignExpr, AssignTarget, BinaryExpr, BoolLit, CallExpr, Expr, LogicExpr, NilLit,
-  NumericLit, StringLit, TernaryExpr, UnaryExpr, Var,
+  NumericLit, StringLit, TernaryExpr, UnaryExpr, Var, MemberExpr,
 };
 pub use self::program::Program;
 pub use self::stmt::{

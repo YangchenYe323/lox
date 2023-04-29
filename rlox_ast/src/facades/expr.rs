@@ -11,6 +11,7 @@ use rlox_span::{Span, Spanned, SymbolId};
 
 #[derive(Debug, Serialize, Clone, Copy)]
 pub enum Expr {
+  Member(MemberExpr),
   Call(CallExpr),
   Assign(AssignExpr),
   Ternary(TernaryExpr),
@@ -38,6 +39,7 @@ impl Spanned for Expr {
       Expr::Var(e) => e.span(),
       Expr::Assign(e) => e.span(),
       Expr::Logic(e) => e.span(),
+      Expr::Member(e) => e.span(),
     }
   }
 }
@@ -57,6 +59,7 @@ impl Expr {
       AstNodeKind::BoolLiteral(_) => Bool(BoolLit(ptr)),
       AstNodeKind::Var(_) => Var(self::Var(ptr)),
       AstNodeKind::Nil => Nil(NilLit(ptr)),
+      AstNodeKind::Member(_) => Member(MemberExpr(ptr)),
       _ => unreachable!(),
     }
   }
@@ -362,12 +365,14 @@ impl Spanned for AssignExpr {
 #[derive(Debug, Clone, Copy, Serialize)]
 pub enum AssignTarget {
   Ident(Var),
+  Member(MemberExpr),
 }
 
 impl AssignTarget {
   pub fn new(ptr: AstNodePtr) -> Self {
     match &ptr.get().inner {
       AstNodeKind::Var(_) => Self::Ident(Var(ptr)),
+      AstNodeKind::Member(_) => Self::Member(MemberExpr(ptr)),
       _ => unreachable!(),
     }
   }
@@ -473,6 +478,40 @@ impl Serialize for Args {
 }
 
 impl Spanned for Args {
+  fn span(&self) -> Span {
+    self.0.span()
+  }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct MemberExpr(AstNodePtr);
+
+impl MemberExpr {
+  pub fn object(&self) -> Expr {
+    self.0.nth_child(0).map(Expr::new).unwrap()
+  }
+
+  pub fn property(&self) -> SymbolId {
+    match self.0.get().inner {
+      AstNodeKind::Member(p) => p,
+      _ => unreachable!(),
+    }
+  }
+}
+
+impl Serialize for MemberExpr {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: serde::Serializer,
+  {
+    let mut state = serializer.serialize_struct("MemberExpr", 2)?;
+    state.serialize_field("object", &self.object())?;
+    state.serialize_field("property", &self.property())?;
+    state.end()
+  }
+}
+
+impl Spanned for MemberExpr {
   fn span(&self) -> Span {
     self.0.span()
   }

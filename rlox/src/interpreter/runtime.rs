@@ -38,15 +38,12 @@ impl Environment {
     self.memory.push(LoxValueKind::nil());
     let next_addr = self.memory.len();
 
-    ObjectId::Id(unsafe { NonZeroUsize::new_unchecked(next_addr) })
+    ObjectId(unsafe { NonZeroUsize::new_unchecked(next_addr) })
   }
 
   /// Maps an [ObjectId] to internal address used.
   // TODO: Propagate nil pointer dereference as would be used in class
   fn to_addr(object: ObjectId) -> usize {
-    let ObjectId::Id(id) = object else {
-      unreachable!();
-    };
-    usize::from(id) - 1
+    usize::from(object.0) - 1
   }
 }

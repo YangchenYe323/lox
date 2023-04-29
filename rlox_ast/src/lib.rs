@@ -96,6 +96,7 @@ pub enum AstNodeKind {
   TernaryExpr,
   Assign,
   FnCall,
+  Member(SymbolId),
   CallArgList,
   BinaryExpr(BinaryOp),
   LogicExpr(LogicalOp),
@@ -450,6 +451,13 @@ impl SyntaxTreeBuilder {
     })
   }
 
+  pub fn member_access(&mut self, span: Span, object: AstNodeId, property: SymbolId) -> AstNodeId {
+    let inner = AstNode::new(span, AstNodeKind::Member(property));
+    let member = self.new_node(inner);
+    append_child!(member, object);
+    member
+  }
+
   pub fn re_span(&mut self, node_id: AstNodeId, new_span: Span) -> AstNodeId {
     NODE_ARENA.with_borrow_mut(|arena| {
       let node = &mut arena[indextree::NodeId::from(node_id)];
@@ -479,6 +487,7 @@ impl SyntaxTreeBuilder {
       let node = &arena[indextree::NodeId::from(node_id)];
       match &node.get().inner {
         AstNodeKind::Var(_) => true,
+        AstNodeKind::Member(_) => true,
         _ => false,
       }
     })

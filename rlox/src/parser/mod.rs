@@ -491,20 +491,39 @@ impl Parser {
     }
   }
 
-  /// call → primary ( "(" arguments ")" )* ;
+  /// call → primary ( "(" arguments ")" | "." IDENTIFIER )* ;
   pub fn call(&mut self) -> ParserResult<AstNodeId> {
     let start = self.cur_span_start();
     let mut base = self.primary()?;
-    while self.advance_if_match(TokenKind::LParen) {
-      let arguments = self.arguments()?;
-      if !self.advance_if_match(TokenKind::RParen) {
-        return Err(unexpected_token(self.cur_token()));
+
+    loop {
+      match self.cur_token().kind {
+        TokenKind::LParen => {
+          self.advance();
+          let arguments = self.arguments()?;
+          if !self.advance_if_match(TokenKind::RParen) {
+            return Err(unexpected_token(self.cur_token()));
+          }
+          let end = self.prev_token().span.end;
+          base = self
+            .builder
+            .function_call(Span::new(start, end), base, arguments);
+        }
+        TokenKind::Dot => {
+          self.advance();
+          let TokenKind::Ident(symbol) = self.cur_token().kind else {
+            return Err(unexpected_token(self.cur_token()));
+          };
+          self.advance();
+          let end = self.prev_token().span.end;
+          base = self
+            .builder
+            .member_access(Span::new(start, end), base, symbol);
+        }
+        _ => break,
       }
-      let end = self.prev_token().span.end;
-      base = self
-        .builder
-        .function_call(Span::new(start, end), base, arguments);
     }
+
     Ok(base)
   }
 

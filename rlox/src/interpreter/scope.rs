@@ -2,7 +2,6 @@
 
 use std::rc::Rc;
 
-use rlox_ast::facades::AssignTarget;
 use rlox_span::SymbolId;
 use rustc_hash::FxHashMap;
 
@@ -34,12 +33,6 @@ impl Scope {
     symbols.insert(symbol, object);
     let enclosing_scope = Rc::clone(self);
     Self::new(symbols, Some(enclosing_scope))
-  }
-
-  pub fn get_lvalue(&self, target: AssignTarget) -> Option<ObjectId> {
-    match target {
-      AssignTarget::Ident(var) => self.get_lvalue_symbol(var.var_symbol()),
-    }
   }
 
   pub fn get_lvalue_symbol(&self, symbol: SymbolId) -> Option<ObjectId> {
