@@ -20,6 +20,7 @@ var a = 2; // OK
 var a = 1;
 var a = a + 1; // OK: a = 2
 ```
++ "this" is a valid identifier rather than a reserved keyword, code like `var this = 1` will compile. This identifier is only treated specially in that it will get bind to the object where a method is called. The binding rule is the same with the book, but users can overwrite the variable in the inner scope.
 
 #### Tree Walk Interpretor:
 - [x] Evaluating expressions
