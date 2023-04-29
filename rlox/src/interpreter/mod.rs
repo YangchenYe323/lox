@@ -16,7 +16,9 @@ use rustc_hash::FxHashMap;
 
 use self::{
   builtin_functions::{builtin_heap, builtin_print, builtin_time},
-  diagnostics::{LoxRuntimeError, SpannedLoxRuntimeError, SpannedLoxRuntimeErrorWrapper},
+  diagnostics::{
+    no_such_property, LoxRuntimeError, SpannedLoxRuntimeError, SpannedLoxRuntimeErrorWrapper,
+  },
   eval::{logical_and, logical_or, BinaryEval, UnaryEval},
   objprint::Printable,
   runtime::Environment,
@@ -210,7 +212,7 @@ impl AstVisitor for Interpreter {
         Rc::clone(function) as Rc<dyn LoxCallable>
       ))
     } else {
-      Err(member_expr.wrap(LoxRuntimeError::NoSuchProperty))
+      Err(member_expr.wrap(no_such_property(member_expr.property())))
     }
   }
 

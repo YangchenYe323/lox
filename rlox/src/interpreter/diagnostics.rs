@@ -1,7 +1,8 @@
 use miette::Diagnostic;
+use rlox_ast::INTERNER;
 use thiserror::Error;
 
-use rlox_span::{Span, Spanned};
+use rlox_span::{Span, Spanned, SymbolId};
 
 #[derive(Debug, Error, Diagnostic)]
 pub enum LoxRuntimeError {
@@ -22,8 +23,8 @@ pub enum LoxRuntimeError {
   UnresolvedReference,
   #[error("RuntimeError: {0} is not an object")]
   InvalidMemberAccess(/* type */ &'static str),
-  #[error("Runtime Error: Object has no such property")]
-  NoSuchProperty,
+  #[error("Runtime Error: Object has no property {0}")]
+  NoSuchProperty(/* property */ &'static str),
   #[error("Object of type {0} is not callable")]
   InalidCall(&'static str),
   /// A catch-all case for all non-lox related error produced by rust code itself
@@ -33,6 +34,10 @@ pub enum LoxRuntimeError {
 
 pub fn system_error<E: std::error::Error + Send + Sync + 'static>(error: E) -> LoxRuntimeError {
   LoxRuntimeError::SystemError(Box::new(error))
+}
+
+pub fn no_such_property(property: SymbolId) -> LoxRuntimeError {
+  LoxRuntimeError::NoSuchProperty(INTERNER.with_borrow(|i| i.get(property)))
 }
 
 #[derive(Debug, Error, Diagnostic)]
