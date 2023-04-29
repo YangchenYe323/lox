@@ -22,8 +22,8 @@ pub enum LoxRuntimeError {
   UnresolvedReference,
   #[error("RuntimeError: {0} is not an object")]
   InvalidMemberAccess(/* type */ &'static str),
-  #[error("Runtime Error: Object has no such method")]
-  NoSuchMethod,
+  #[error("Runtime Error: Object has no such property")]
+  NoSuchProperty,
   #[error("Object of type {0} is not callable")]
   InalidCall(&'static str),
   /// A catch-all case for all non-lox related error produced by rust code itself

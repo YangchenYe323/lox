@@ -195,29 +195,27 @@ impl AstVisitor for Interpreter {
   }
 
   fn visit_member_expression(&mut self, member_expr: MemberExpr) -> Self::Ret {
-    let lvalue = self
-      .resolve_lvalue(AssignTarget::Member(member_expr))
-      .map_err(|e| member_expr.wrap(e))?;
-    Ok(self.environment.get_rvalue(lvalue))
+    let object = self.visit_expression(member_expr.object())?;
+    let LoxValueKind::ObjectId(id) = object else {
+      return Err(member_expr.wrap(LoxRuntimeError::InvalidMemberAccess(object.type_name())));
+    };
+    let LoxValueKind::Object(object) = self.environment.get_rvalue(id) else { unreachable!() };
+
+    // Search in property
+    if let Some(property) = object.fields.get(&member_expr.property()) {
+      Ok(self.environment.get_rvalue(*property))
+    } else if let Some(function) = object.class.methods.get(&member_expr.property()) {
+      // search in method
+      Ok(LoxValueKind::Callable(
+        Rc::clone(function) as Rc<dyn LoxCallable>
+      ))
+    } else {
+      Err(member_expr.wrap(LoxRuntimeError::NoSuchProperty))
+    }
   }
 
   fn visit_call_expression(&mut self, call_expr: CallExpr) -> Self::Ret {
     self.with_context(ExecutionContext::IN_FUNCTION, |evaluator| {
-      // Handle Method call
-      if let Expr::Member(member) = call_expr.callee() {
-        // TODO: handle "this" pointer
-        let method = evaluator
-          .resolve_method(member)
-          .map_err(|e| call_expr.wrap(e))?;
-        let mut arguments = vec![];
-        for arg in call_expr.argument_list().arguments() {
-          arguments.push(evaluator.visit_expression(arg)?);
-        }
-        return method
-          .call(evaluator, arguments)
-          .map_err(|e| call_expr.wrap(e));
-      }
-
       let callee = evaluator.visit_expression(call_expr.callee())?;
       match callee {
         LoxValueKind::Callable(c) => {
@@ -381,29 +379,6 @@ impl Interpreter {
 
         Ok(property)
       }
-    }
-  }
-
-  fn resolve_method(&mut self, member: MemberExpr) -> Result<Rc<Function>, LoxRuntimeError> {
-    let object = self
-      .visit_expression(member.object())
-      .map_err(LoxRuntimeError::from)?;
-
-    // We can't do "string".c or 1.c
-    let LoxValueKind::ObjectId(id) = object else {
-      return Err(LoxRuntimeError::InvalidMemberAccess(object.type_name()));
-    };
-
-    let LoxValueKind::Object(object) = self.environment.get_rvalue(id) else {
-      // Safety: given that visit_expression returns an ObjectId, it could only be a LoxInstance
-      unreachable!()
-    };
-
-    let class = object.class.as_ref();
-    if let Some(function) = class.methods.get(&member.property()) {
-      Ok(Rc::clone(function))
-    } else {
-      Err(LoxRuntimeError::NoSuchMethod)
     }
   }
 

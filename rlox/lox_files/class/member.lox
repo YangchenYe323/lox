@@ -3,8 +3,25 @@ class A {}
 var a = A()
 var b = a
 a.c = 123
-print(b.c)
-print(a == b)
+print(b.c) // 123
+print(a == b) // true
 var c = A()
 c.c = 123
-print(a == c)
+print(a == c) // false
+
+fun notMethod() {
+  return 1;
+}
+
+a.function = notMethod;
+print(a.function()) // 1
+
+class WithMethod {
+  m() {
+    return 2;
+  }
+}
+
+var d = WithMethod();
+var method = d.m;
+print(method()) // 2
