@@ -101,6 +101,7 @@ pub trait LoxCallable {
 /// [Function] is a user-defined function in lox language
 #[derive(Debug)]
 pub struct Function {
+  pub is_init: bool,
   pub name: SymbolId,
   // The captured environment of the enclosing scopeproperty.
   pub closure: Rc<Scope>,
@@ -109,11 +110,12 @@ pub struct Function {
 }
 
 impl Function {
-  pub fn new(handle: FnDecl, closure: Rc<Scope>) -> Self {
+  pub fn new(is_init: bool, handle: FnDecl, closure: Rc<Scope>) -> Self {
     let name = handle.name();
     let formal_parameters = handle.parameter_list().parameters().collect();
     let body = handle.body();
     Self {
+      is_init,
       name,
       closure,
       formal_parameters,
@@ -142,9 +144,20 @@ impl LoxCallable for Function {
         let symbol = var.var_symbol();
         evaluator.declare_variable(symbol, value);
       }
-      evaluator
+      let ret = evaluator
         .visit_block(self.body)
-        .map_err(LoxRuntimeError::from)
+        .map_err(LoxRuntimeError::from)?;
+
+      if self.is_init {
+        let this_var = INTERNER.with_borrow_mut(|i| i.intern("this"));
+        let this_ref = evaluator.active_scope.get_lvalue_symbol(this_var).unwrap();
+        let LoxValueKind::ObjectId(this_value) = evaluator.environment.get_rvalue(this_ref) else { unreachable!() };
+        Ok(LoxValueKind::ObjectId(
+          this_value
+        ))
+      } else {
+        Ok(ret)
+      }
     })
   }
 
@@ -171,7 +184,8 @@ impl LoxClass {
       .methods()
       .map(|method| {
         let method_name = method.name();
-        let method = Rc::new(Function::new(method, Rc::clone(&closure)));
+        let is_init = INTERNER.with_borrow(|i| i.get(method_name) == "init");
+        let method = Rc::new(Function::new(is_init, method, Rc::clone(&closure)));
         (method_name, method)
       })
       .collect();
@@ -223,6 +237,9 @@ pub struct LoxInstance {
 }
 
 impl LoxInstance {
+  /// Create a new [LoxInstance]
+  /// Note that the 'this' stores another [ObjectId] which stores this instance.
+  /// This is to make sure the 'this' variable is accessed in the same way as other object references.
   pub fn new(this: ObjectId, class: Rc<LoxClass>) -> Self {
     Self {
       this,
@@ -231,10 +248,12 @@ impl LoxInstance {
     }
   }
 
+  /// Bind a [Function]'s 'this' variable to the current instance.
   pub fn bind_this(&self, function: &Function) -> Rc<dyn LoxCallable> {
     let this_var = INTERNER.with_borrow_mut(|i| i.intern("this"));
 
     let Function {
+      is_init,
       name,
       closure,
       formal_parameters,
@@ -243,6 +262,7 @@ impl LoxInstance {
     let closure_with_this = closure.define(this_var, self.this);
 
     let method_instance = Function {
+      is_init: *is_init,
       name: *name,
       closure: Rc::new(closure_with_this),
       formal_parameters: formal_parameters.clone(),

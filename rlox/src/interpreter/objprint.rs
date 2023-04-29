@@ -1,3 +1,5 @@
+//! This module implements the [Printable] trait, which encapsulates how a lox value is formatted in string
+
 use rlox_ast::INTERNER;
 
 use super::{

@@ -15,7 +15,7 @@ use rlox_span::SymbolId;
 use rustc_hash::FxHashMap;
 
 use self::{
-  builtin_functions::{builtin_heap, builtin_print, builtin_time},
+  builtin_functions::{builtin_get_object_id, builtin_heap, builtin_print, builtin_time},
   diagnostics::{
     no_such_property, LoxRuntimeError, SpannedLoxRuntimeError, SpannedLoxRuntimeErrorWrapper,
   },
@@ -154,7 +154,7 @@ impl AstVisitor for Interpreter {
     let object = self.declare_variable(name, LoxValueKind::nil());
     let closure = Rc::clone(&self.active_scope);
 
-    let function = Function::new(fn_decl, closure);
+    let function = Function::new(false, fn_decl, closure);
     self
       .environment
       .assign(object, LoxValueKind::Callable(Rc::new(function)));
@@ -395,6 +395,7 @@ fn setup_globals() -> (Environment, Rc<Scope>) {
   populate_global(&mut env, &mut symbols, "time", builtin_time);
   populate_global(&mut env, &mut symbols, "print", builtin_print);
   populate_global(&mut env, &mut symbols, "heap", builtin_heap);
+  populate_global(&mut env, &mut symbols, "object_id", builtin_get_object_id);
   (env, Rc::new(Scope::new(symbols, None)))
 }
 

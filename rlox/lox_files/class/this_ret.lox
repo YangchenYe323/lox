@@ -1,0 +1,10 @@
+class Foo {
+  init() {
+    this.bar = 1;
+  }
+}
+
+var f = Foo();
+var c = f.init();
+print(c == f); // true
+print(c.bar); // 1
