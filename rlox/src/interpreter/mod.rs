@@ -21,7 +21,7 @@ use self::{
   objprint::Printable,
   runtime::Environment,
   scope::Scope,
-  types::{Function, LoxClass, LoxValueKind, ObjectId},
+  types::{Function, LoxCallable, LoxClass, LoxValueKind, ObjectId},
 };
 
 mod builtin_functions;
@@ -203,6 +203,21 @@ impl AstVisitor for Interpreter {
 
   fn visit_call_expression(&mut self, call_expr: CallExpr) -> Self::Ret {
     self.with_context(ExecutionContext::IN_FUNCTION, |evaluator| {
+      // Handle Method call
+      if let Expr::Member(member) = call_expr.callee() {
+        // TODO: handle "this" pointer
+        let method = evaluator
+          .resolve_method(member)
+          .map_err(|e| call_expr.wrap(e))?;
+        let mut arguments = vec![];
+        for arg in call_expr.argument_list().arguments() {
+          arguments.push(evaluator.visit_expression(arg)?);
+        }
+        return method
+          .call(evaluator, arguments)
+          .map_err(|e| call_expr.wrap(e));
+      }
+
       let callee = evaluator.visit_expression(call_expr.callee())?;
       match callee {
         LoxValueKind::Callable(c) => {
@@ -366,6 +381,29 @@ impl Interpreter {
 
         Ok(property)
       }
+    }
+  }
+
+  fn resolve_method(&mut self, member: MemberExpr) -> Result<Rc<Function>, LoxRuntimeError> {
+    let object = self
+      .visit_expression(member.object())
+      .map_err(LoxRuntimeError::from)?;
+
+    // We can't do "string".c or 1.c
+    let LoxValueKind::ObjectId(id) = object else {
+      return Err(LoxRuntimeError::InvalidMemberAccess(object.type_name()));
+    };
+
+    let LoxValueKind::Object(object) = self.environment.get_rvalue(id) else {
+      // Safety: given that visit_expression returns an ObjectId, it could only be a LoxInstance
+      unreachable!()
+    };
+
+    let class = object.class.as_ref();
+    if let Some(function) = class.methods.get(&member.property()) {
+      Ok(Rc::clone(function))
+    } else {
+      Err(LoxRuntimeError::NoSuchMethod)
     }
   }
 

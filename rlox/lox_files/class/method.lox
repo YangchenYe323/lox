@@ -1,0 +1,15 @@
+class B {
+  baz() {
+    return "BAZ";
+  }
+}
+
+class A {
+  foo(bar) {
+    print(bar.baz())
+  }
+}
+
+var a = A()
+var b = B()
+a.foo(b)

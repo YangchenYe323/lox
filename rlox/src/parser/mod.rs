@@ -112,7 +112,7 @@ impl Parser {
     let method_start = self.cur_span_start();
     let methods = self.builder.start_method_list(method_start);
     while !self.advance_if_match(TokenKind::RBrace) {
-      let function = self.func()?;
+      let function = self.with_context(ParserContextFlags::IN_FUNCTION_DECL, Parser::func)?;
       self.builder.add_method(&methods, function);
     }
     let method_end = self.prev_token().span.end;
@@ -130,13 +130,11 @@ impl Parser {
 
   /// funDecl → "fun" function ;
   pub fn func_decl(&mut self) -> ParserResult<AstNodeId> {
-    self.with_context(ParserContextFlags::IN_FUNCTION_DECL, |parser| {
-      let start = parser.cur_span_start();
-      // advance "fun"
-      parser.advance();
-      let function = parser.func()?;
-      Ok(parser.builder.re_span_start(function, start))
-    })
+    let start = self.cur_span_start();
+    // advance "fun"
+    self.advance();
+    let function = self.with_context(ParserContextFlags::IN_FUNCTION_DECL, Parser::func)?;
+    Ok(self.builder.re_span_start(function, start))
   }
 
   /// function → IDENTIFIER "(" parameters ")" block ;
