@@ -1,0 +1,21 @@
+class List {
+  init(val = nil, next = nil) {
+    this.val = val
+    this.next = next
+  }
+
+  len() {
+    if this.next == nil {
+      return 1;
+    }
+    return 1 + this.next.len();
+  }
+}
+
+var l = List(0)
+l = List(1, l)
+l = List(2, l)
+print(l.len()) // 3
+print(l.val) // 2
+print(l.next.val) // 1
+print(l.next.next.val) // 0
