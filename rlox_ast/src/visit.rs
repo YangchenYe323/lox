@@ -1,3 +1,5 @@
+use crate::facades::ClassDecl;
+
 use super::facades::{
   AssignExpr, BinaryExpr, Block, BoolLit, BreakStmt, CallExpr, Expr, ExprStmt, FnDecl, IfStmt,
   LogicExpr, NilLit, NumericLit, Program, ReturnStmt, Stmt, StringLit, TernaryExpr, UnaryExpr, Var,
@@ -12,6 +14,8 @@ pub trait AstVisitor {
   fn visit_variable_declaration(&mut self, var_decl: VarDecl) -> Self::Ret;
 
   fn visit_function_declaration(&mut self, fn_decl: FnDecl) -> Self::Ret;
+
+  fn visit_class_declaration(&mut self, class_decl: ClassDecl) -> Self::Ret;
 
   fn visit_statement(&mut self, stmt: Stmt) -> Self::Ret;
 

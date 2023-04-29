@@ -1,5 +1,7 @@
 use std::rc::Rc;
 
+use rlox_span::SymbolId;
+
 use crate::interpreter::{
   diagnostics::LoxRuntimeError,
   types::{LoxCallable, LoxValueKind},
@@ -7,7 +9,7 @@ use crate::interpreter::{
 };
 
 /// Built in callable to get the current time.
-pub struct Time;
+pub struct Time(SymbolId);
 
 impl LoxCallable for Time {
   fn call(
@@ -25,9 +27,13 @@ impl LoxCallable for Time {
   fn arity(&self) -> u32 {
     0
   }
+
+  fn name(&self) -> rlox_span::SymbolId {
+    self.0
+  }
 }
 
-pub fn builtin_time() -> LoxValueKind {
-  let f = Time;
+pub fn builtin_time(id: SymbolId) -> LoxValueKind {
+  let f = Time(id);
   LoxValueKind::Callable(Rc::new(f))
 }

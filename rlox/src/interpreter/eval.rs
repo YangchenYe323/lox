@@ -43,8 +43,12 @@ fn add(left_operand: &LoxValueKind, right_operand: &LoxValueKind) -> EvalResult<
     (LoxValueKind::String(l), LoxValueKind::String(r)) => {
       Ok(LoxValueKind::String(l.to_string() + r))
     }
-    (LoxValueKind::String(l), val) => Ok(LoxValueKind::String(format!("{}{}", l, val))),
-    (val, LoxValueKind::String(l)) => Ok(LoxValueKind::String(format!("{}{}", val, l))),
+    (LoxValueKind::String(l), LoxValueKind::Number(val)) => {
+      Ok(LoxValueKind::String(format!("{}{}", l, val)))
+    }
+    (LoxValueKind::Number(val), LoxValueKind::String(l)) => {
+      Ok(LoxValueKind::String(format!("{}{}", val, l)))
+    }
     (left, right) => Err(LoxRuntimeError::BinaryOpTypeError(
       "+",
       left.type_name(),

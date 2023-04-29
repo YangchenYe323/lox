@@ -51,7 +51,7 @@ impl InterpreterDriver {
       match evaluation {
         Ok(value) => {
           print!("{}", self.evaluator.drain_output());
-          Cow::Owned(value.to_string())
+          Cow::Owned(self.evaluator.value_to_string(&value))
         }
         Err(runtime_error) => {
           self.report_error(runtime_error, source);

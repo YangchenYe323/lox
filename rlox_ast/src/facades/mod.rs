@@ -21,7 +21,8 @@ pub use self::expr::{
 };
 pub use self::program::Program;
 pub use self::stmt::{
-  Block, BreakStmt, ExprStmt, FnDecl, IfStmt, Params, ReturnStmt, Stmt, VarDecl, WhileStmt,
+  Block, BreakStmt, ClassDecl, ExprStmt, FnDecl, IfStmt, Methods, Params, ReturnStmt, Stmt,
+  VarDecl, WhileStmt,
 };
 
 #[derive(Debug, Clone, Copy)]

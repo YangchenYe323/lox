@@ -81,6 +81,8 @@ pub enum AstNodeKind {
   Program,
   // Declaration
   VarDecl(SymbolId),
+  ClassDecl(SymbolId),
+  Methods,
   // Statements
   ExprStmt,
   Block,
@@ -420,6 +422,34 @@ impl SyntaxTreeBuilder {
     return_stmt
   }
 
+  pub fn class_declaration(&mut self, span: Span, name: SymbolId, methods: AstNodeId) -> AstNodeId {
+    let inner = AstNode::new(span, AstNodeKind::ClassDecl(name));
+    let class_decl = self.new_node(inner);
+    append_child!(class_decl, methods);
+    class_decl
+  }
+
+  pub fn start_method_list(&mut self, start: u32) -> MethodsBuilder {
+    let inner = AstNode::new(Span::new(start, u32::MAX), AstNodeKind::Methods);
+    MethodsBuilder(self.new_node(inner))
+  }
+
+  pub fn add_method(&mut self, MethodsBuilder(node): &MethodsBuilder, method: AstNodeId) {
+    append_child!(node, method);
+  }
+
+  pub fn finish_method_list(
+    &mut self,
+    MethodsBuilder(methods): MethodsBuilder,
+    end: u32,
+  ) -> AstNodeId {
+    NODE_ARENA.with_borrow_mut(|arena| {
+      let node = &mut arena[indextree::NodeId::from(methods)];
+      node.get_mut().span.end = end;
+      methods
+    })
+  }
+
   pub fn re_span(&mut self, node_id: AstNodeId, new_span: Span) -> AstNodeId {
     NODE_ARENA.with_borrow_mut(|arena| {
       let node = &mut arena[indextree::NodeId::from(node_id)];
@@ -456,9 +486,7 @@ impl SyntaxTreeBuilder {
 }
 
 pub struct ProgramBuilder(AstNodeId);
-
 pub struct BlockBuilder(AstNodeId);
-
 pub struct ArgListBuilder(AstNodeId);
-
 pub struct ParamListBuilder(AstNodeId);
+pub struct MethodsBuilder(AstNodeId);

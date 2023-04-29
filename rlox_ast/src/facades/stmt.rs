@@ -14,6 +14,7 @@ pub enum Stmt {
   Expr(ExprStmt),
   VarDecl(VarDecl),
   FnDecl(FnDecl),
+  ClassDecl(ClassDecl),
   Block(Block),
   If(IfStmt),
   While(WhileStmt),
@@ -32,6 +33,7 @@ impl Stmt {
       AstNodeKind::Break => Self::Break(BreakStmt(ptr)),
       AstNodeKind::FnDecl(_) => Self::FnDecl(FnDecl(ptr)),
       AstNodeKind::Return => Self::Return(ReturnStmt(ptr)),
+      AstNodeKind::ClassDecl(_) => Self::ClassDecl(ClassDecl(ptr)),
       k => {
         unreachable!(
           "Shouldn't construct statement out of AST Node kind: {:?}",
@@ -53,6 +55,7 @@ impl Spanned for Stmt {
       Stmt::Break(s) => s.span(),
       Stmt::FnDecl(s) => s.span(),
       Stmt::Return(s) => s.span(),
+      Self::ClassDecl(s) => s.span(),
     }
   }
 }
@@ -343,6 +346,70 @@ impl Serialize for ReturnStmt {
 }
 
 impl Spanned for ReturnStmt {
+  fn span(&self) -> Span {
+    self.0.span()
+  }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct ClassDecl(AstNodePtr);
+
+impl ClassDecl {
+  pub fn name(&self) -> SymbolId {
+    match self.0.get().inner {
+      AstNodeKind::ClassDecl(name) => name,
+      _ => unreachable!(),
+    }
+  }
+
+  pub fn method_list(&self) -> Methods {
+    self.0.nth_child(0).map(Methods).unwrap()
+  }
+}
+
+impl Serialize for ClassDecl {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: serde::Serializer,
+  {
+    let name = self.name();
+    let methods = self.method_list();
+    let mut state = serializer.serialize_struct("ClassDecl", 2)?;
+    state.serialize_field("name", &name)?;
+    state.serialize_field("methods", &methods)?;
+    state.end()
+  }
+}
+
+impl Spanned for ClassDecl {
+  fn span(&self) -> Span {
+    self.0.span()
+  }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Methods(AstNodePtr);
+
+impl Methods {
+  pub fn methods(&self) -> impl Iterator<Item = FnDecl> {
+    self.0.children().map(FnDecl)
+  }
+}
+
+impl Serialize for Methods {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: serde::Serializer,
+  {
+    let mut seq = serializer.serialize_seq(None)?;
+    for method in self.methods() {
+      seq.serialize_element(&method)?;
+    }
+    seq.end()
+  }
+}
+
+impl Spanned for Methods {
   fn span(&self) -> Span {
     self.0.span()
   }

@@ -8,7 +8,7 @@ use super::types::ObjectId;
 /// 1. A simulation of the memory model as a mapping from [ObjectId] -> [LoxValueKind]
 /// 2. Dummy memory allocator with just a bump of [ObjectId]
 pub struct Environment {
-  memory: Vec<LoxValueKind>,
+  pub memory: Vec<LoxValueKind>,
 }
 
 impl Default for Environment {
@@ -28,7 +28,7 @@ impl Environment {
     self.memory[addr] = value;
   }
 
-  pub fn get_rvalue(&mut self, object: ObjectId) -> LoxValueKind {
+  pub fn get_rvalue(&self, object: ObjectId) -> LoxValueKind {
     let addr = Self::to_addr(object);
     assert!(addr < self.memory.len());
     self.memory[addr].clone()

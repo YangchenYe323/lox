@@ -4,9 +4,9 @@ use bitflags::bitflags;
 
 use rlox_ast::{
   facades::{
-    AssignExpr, BinaryExpr, Block, BoolLit, BreakStmt, CallExpr, Expr, ExprStmt, FnDecl, IfStmt,
-    LogicExpr, NilLit, NumericLit, Program, ReturnStmt, Stmt, StringLit, TernaryExpr, UnaryExpr,
-    Var, VarDecl, WhileStmt,
+    AssignExpr, BinaryExpr, Block, BoolLit, BreakStmt, CallExpr, ClassDecl, Expr, ExprStmt, FnDecl,
+    IfStmt, LogicExpr, NilLit, NumericLit, Program, ReturnStmt, Stmt, StringLit, TernaryExpr,
+    UnaryExpr, Var, VarDecl, WhileStmt,
   },
   visit::AstVisitor,
   LogicalOp, INTERNER,
@@ -15,17 +15,19 @@ use rlox_span::SymbolId;
 use rustc_hash::FxHashMap;
 
 use self::{
-  builtin_functions::{builtin_print, builtin_time},
+  builtin_functions::{builtin_heap, builtin_print, builtin_time},
   diagnostics::{LoxRuntimeError, SpannedLoxRuntimeError, SpannedLoxRuntimeErrorWrapper},
   eval::{logical_and, logical_or, BinaryEval, UnaryEval},
+  objprint::Printable,
   runtime::Environment,
   scope::Scope,
-  types::{Function, LoxValueKind, ObjectId},
+  types::{Function, LoxClass, LoxValueKind, ObjectId},
 };
 
 mod builtin_functions;
 mod diagnostics;
 mod eval;
+mod objprint;
 mod runtime;
 mod scope;
 mod types;
@@ -57,6 +59,10 @@ impl Interpreter {
     }
   }
 
+  pub fn value_to_string(&self, value: &LoxValueKind) -> String {
+    value.to_string(&self.environment)
+  }
+
   pub fn drain_output(&mut self) -> String {
     std::mem::take(&mut self.output)
   }
@@ -84,6 +90,7 @@ impl AstVisitor for Interpreter {
       Stmt::Break(stmt) => self.visit_break_statement(stmt),
       Stmt::FnDecl(stmt) => self.visit_function_declaration(stmt),
       Stmt::Return(stmt) => self.visit_return_statement(stmt),
+      Stmt::ClassDecl(stmt) => self.visit_class_declaration(stmt),
     }
   }
 
@@ -125,6 +132,17 @@ impl AstVisitor for Interpreter {
     let symbol = var_decl.var_symbol();
     let init = self.visit_expression(var_decl.init_expr())?;
     self.declare_variable(symbol, init);
+    Ok(LoxValueKind::nil())
+  }
+
+  fn visit_class_declaration(&mut self, class_decl: ClassDecl) -> Self::Ret {
+    let name = class_decl.name();
+    let object = self.declare_variable(name, LoxValueKind::nil());
+
+    let class = LoxClass::new(class_decl, Rc::clone(&self.active_scope));
+    self
+      .environment
+      .assign(object, LoxValueKind::Class(Rc::new(class)));
     Ok(LoxValueKind::nil())
   }
 
@@ -185,6 +203,15 @@ impl AstVisitor for Interpreter {
             arguments.push(evaluator.visit_expression(arg)?);
           }
           c.call(evaluator, arguments).map_err(|e| call_expr.wrap(e))
+        }
+        LoxValueKind::Class(c) => {
+          let mut arguments = vec![];
+          for arg in call_expr.argument_list().arguments() {
+            arguments.push(evaluator.visit_expression(arg)?);
+          }
+          LoxClass::new_instance(c, evaluator, arguments)
+            .map(LoxValueKind::ObjectId)
+            .map_err(|e| call_expr.wrap(e))
         }
         c => Err(call_expr.wrap(LoxRuntimeError::InalidCall(c.type_name()))),
       }
@@ -316,8 +343,9 @@ impl Interpreter {
 fn setup_globals() -> (Environment, Rc<Scope>) {
   let mut env = Environment::default();
   let mut symbols = FxHashMap::default();
-  populate_global(&mut env, &mut symbols, "time", builtin_time());
-  populate_global(&mut env, &mut symbols, "print", builtin_print());
+  populate_global(&mut env, &mut symbols, "time", builtin_time);
+  populate_global(&mut env, &mut symbols, "print", builtin_print);
+  populate_global(&mut env, &mut symbols, "heap", builtin_heap);
   (env, Rc::new(Scope::new(symbols, None)))
 }
 
@@ -325,10 +353,10 @@ fn populate_global(
   environment: &mut Environment,
   symbols: &mut FxHashMap<SymbolId, ObjectId>,
   name: &'static str,
-  value: LoxValueKind,
+  value: impl FnOnce(SymbolId) -> LoxValueKind,
 ) {
   let symbol = INTERNER.with_borrow_mut(|interner| interner.intern(name));
   let object = environment.new_object();
   symbols.insert(symbol, object);
-  environment.assign(object, value);
+  environment.assign(object, value(symbol));
 }

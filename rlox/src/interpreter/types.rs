@@ -1,32 +1,44 @@
+use std::fmt::Debug;
 use std::{num::NonZeroUsize, rc::Rc};
 
 use super::scope::Scope;
 use super::{diagnostics::LoxRuntimeError, Interpreter};
+use rlox_ast::facades::ClassDecl;
+use rlox_ast::INTERNER;
 use rlox_ast::{
   facades::{Block, FnDecl, VarDecl},
   visit::AstVisitor,
 };
+use rlox_span::SymbolId;
+use rustc_hash::FxHashMap;
 
 /// [LoxValueKind] describes the available values of a lox object stored in a variable.
 /// Since lox is dynamically typed, every variable is mapped to an [ObjectId], which stores
 /// [LoxValueKind]
 #[derive(Clone)]
 pub enum LoxValueKind {
+  // User facing values, i.e., can be stored directly in variables
   Number(f64),
   String(String),
   Boolean(bool),
-  ObjectId(ObjectId),
   Callable(Rc<dyn LoxCallable>),
+  ObjectId(ObjectId),
+
+  // Internal values, no user variable would directly store these.
+  Class(Rc<LoxClass>),
+  Object(LoxInstance),
 }
 
-impl std::fmt::Display for LoxValueKind {
+impl std::fmt::Debug for LoxValueKind {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {
-      LoxValueKind::Number(number) => number.fmt(f),
-      LoxValueKind::String(s) => s.fmt(f),
-      LoxValueKind::Boolean(b) => b.fmt(f),
-      LoxValueKind::ObjectId(object) => object.fmt(f),
-      LoxValueKind::Callable(_) => "lox callable".fmt(f),
+      Self::Number(arg0) => f.debug_tuple("Number").field(arg0).finish(),
+      Self::String(arg0) => f.debug_tuple("String").field(arg0).finish(),
+      Self::Boolean(arg0) => f.debug_tuple("Boolean").field(arg0).finish(),
+      Self::Callable(_arg0) => f.debug_tuple("Callable").finish(),
+      Self::ObjectId(arg0) => f.debug_tuple("ObjectId").field(arg0).finish(),
+      Self::Class(arg0) => f.debug_tuple("Class").field(arg0).finish(),
+      Self::Object(arg0) => f.debug_tuple("Object").field(arg0).finish(),
     }
   }
 }
@@ -44,6 +56,7 @@ impl LoxValueKind {
       LoxValueKind::Boolean(b) => *b,
       LoxValueKind::ObjectId(o) => !matches!(o, ObjectId::Nil),
       LoxValueKind::Callable(_) => true,
+      _ => unreachable!(),
     }
   }
 
@@ -57,6 +70,7 @@ impl LoxValueKind {
         ObjectId::Id(_) => "Object",
       },
       LoxValueKind::Callable(_) => "Callable",
+      _ => unreachable!(),
     }
   }
 }
@@ -72,15 +86,6 @@ pub enum ObjectId {
   Id(ValidAddress),
 }
 
-impl std::fmt::Display for ObjectId {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    match self {
-      ObjectId::Nil => "nil".fmt(f),
-      ObjectId::Id(id) => format!("object located at: {}", id).fmt(f),
-    }
-  }
-}
-
 /// [LoxCallable] trait describes a lox value that can be called, e.g., a
 /// user defined function or an interpreter built-in function.
 pub trait LoxCallable {
@@ -91,10 +96,14 @@ pub trait LoxCallable {
   ) -> Result<LoxValueKind, LoxRuntimeError>;
 
   fn arity(&self) -> u32;
+
+  fn name(&self) -> SymbolId;
 }
 
 /// [Function] is a user-defined function in lox language
+#[derive(Debug)]
 pub struct Function {
+  name: SymbolId,
   // The captured environment of the enclosing scope.
   closure: Rc<Scope>,
   formal_parameters: Vec<VarDecl>,
@@ -103,9 +112,11 @@ pub struct Function {
 
 impl Function {
   pub fn new(handle: FnDecl, closure: Rc<Scope>) -> Self {
+    let name = handle.name();
     let formal_parameters = handle.parameter_list().parameters().collect();
     let body = handle.body();
     Self {
+      name,
       closure,
       formal_parameters,
       body,
@@ -141,5 +152,74 @@ impl LoxCallable for Function {
 
   fn arity(&self) -> u32 {
     self.formal_parameters.len() as u32
+  }
+
+  fn name(&self) -> SymbolId {
+    self.name
+  }
+}
+
+#[derive(Clone, Debug)]
+pub struct LoxClass {
+  pub name: SymbolId,
+  pub methods: FxHashMap<SymbolId, Rc<Function>>,
+}
+
+impl LoxClass {
+  pub fn new(class: ClassDecl, closure: Rc<Scope>) -> Self {
+    let name = class.name();
+    let methods = class
+      .method_list()
+      .methods()
+      .map(|method| {
+        let method_name = method.name();
+        let method = Rc::new(Function::new(method, Rc::clone(&closure)));
+        (method_name, method)
+      })
+      .collect();
+    Self { name, methods }
+  }
+
+  pub fn new_instance(
+    class: Rc<LoxClass>,
+    interpreter: &mut Interpreter,
+    arguments: Vec<LoxValueKind>,
+  ) -> Result<ObjectId, LoxRuntimeError> {
+    let this = INTERNER.with_borrow_mut(|i| i.intern("this"));
+
+    interpreter.with_scope(
+      interpreter.active_scope.spawn_empty_child(),
+      |interpreter| {
+        // Step 1: Allocate memory and bind "this" variable.
+        let object = interpreter.declare_variable(this, LoxValueKind::nil());
+        let instance_raw = LoxInstance::new(Rc::clone(&class));
+        interpreter
+          .environment
+          .assign(object, LoxValueKind::Object(instance_raw));
+
+        // Constructor function
+        let init = INTERNER.with_borrow_mut(|i| i.intern("init"));
+        if let Some(constructor) = class.methods.get(&init) {
+          constructor.call(interpreter, arguments)?;
+        }
+
+        Ok(object)
+      },
+    )
+  }
+}
+
+#[derive(Clone, Debug)]
+pub struct LoxInstance {
+  pub class: Rc<LoxClass>,
+  pub fields: FxHashMap<SymbolId, ObjectId>,
+}
+
+impl LoxInstance {
+  pub fn new(class: Rc<LoxClass>) -> Self {
+    Self {
+      class,
+      fields: FxHashMap::default(),
+    }
   }
 }

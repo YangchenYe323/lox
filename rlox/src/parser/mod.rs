@@ -85,14 +85,47 @@ impl Parser {
   }
 
   /// declaration → varDecl
+  ///             | classDecl
   ///             | functionDecl
   ///             | statement ;
   pub fn decl(&mut self) -> ParserResult<AstNodeId> {
     match self.cur_token().kind {
       TokenKind::Var => self.var_decl(),
       TokenKind::Fun => self.func_decl(),
+      TokenKind::Class => self.class_decl(),
       _ => self.stmt(),
     }
+  }
+
+  /// classDecl → "class" IDENTIFIER "{" function* "}" ;
+  pub fn class_decl(&mut self) -> ParserResult<AstNodeId> {
+    let start = self.cur_span_start();
+    self.advance();
+    let TokenKind::Ident(name) = self.cur_token().kind else {
+      return Err(unexpected_token(self.cur_token()));
+    };
+    self.advance();
+    if !self.advance_if_match(TokenKind::LBrace) {
+      return Err(unexpected_token(self.cur_token()));
+    }
+
+    let method_start = self.cur_span_start();
+    let methods = self.builder.start_method_list(method_start);
+    while !self.advance_if_match(TokenKind::RBrace) {
+      let function = self.func()?;
+      self.builder.add_method(&methods, function);
+    }
+    let method_end = self.prev_token().span.end;
+    let method_list = self.builder.finish_method_list(methods, method_end);
+
+    // advance "}"
+    let end = self.prev_token().span.end;
+
+    Ok(
+      self
+        .builder
+        .class_declaration(Span::new(start, end), name, method_list),
+    )
   }
 
   /// funDecl → "fun" function ;
