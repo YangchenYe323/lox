@@ -23,7 +23,7 @@ use self::{
   objprint::Printable,
   runtime::Environment,
   scope::Scope,
-  types::{Function, LoxCallable, LoxClass, LoxValueKind, ObjectId},
+  types::{Function, LoxClass, LoxValueKind, ObjectId},
 };
 
 mod builtin_functions;
@@ -208,9 +208,7 @@ impl AstVisitor for Interpreter {
       Ok(self.environment.get_rvalue(*property))
     } else if let Some(function) = object.class.methods.get(&member_expr.property()) {
       // search in method
-      Ok(LoxValueKind::Callable(
-        Rc::clone(function) as Rc<dyn LoxCallable>
-      ))
+      Ok(LoxValueKind::Callable(object.bind_this(function.as_ref())))
     } else {
       Err(member_expr.wrap(no_such_property(member_expr.property())))
     }

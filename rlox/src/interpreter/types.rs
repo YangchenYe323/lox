@@ -72,7 +72,8 @@ impl LoxValueKind {
       LoxValueKind::Callable(_) => "Callable",
       LoxValueKind::Nil => "Nil",
       LoxValueKind::Class(_) => "Class",
-      _ => unreachable!(),
+      LoxValueKind::Object(_) => "ObjectValue",
+      // _ => unreachable!(),
     }
   }
 }
@@ -100,11 +101,11 @@ pub trait LoxCallable {
 /// [Function] is a user-defined function in lox language
 #[derive(Debug)]
 pub struct Function {
-  name: SymbolId,
-  // The captured environment of the enclosing scope.
-  closure: Rc<Scope>,
-  formal_parameters: Vec<VarDecl>,
-  body: Block,
+  pub name: SymbolId,
+  // The captured environment of the enclosing scopeproperty.
+  pub closure: Rc<Scope>,
+  pub formal_parameters: Vec<VarDecl>,
+  pub body: Block,
 }
 
 impl Function {
@@ -183,24 +184,32 @@ impl LoxClass {
     arguments: Vec<LoxValueKind>,
   ) -> Result<ObjectId, LoxRuntimeError> {
     let this = INTERNER.with_borrow_mut(|i| i.intern("this"));
+    let init = INTERNER.with_borrow_mut(|i| i.intern("init"));
 
     interpreter.with_scope(
       interpreter.active_scope.spawn_empty_child(),
       |interpreter| {
         // Step 1: Allocate memory and bind "this" variable.
-        let object = interpreter.declare_variable(this, LoxValueKind::nil());
-        let instance_raw = LoxInstance::new(Rc::clone(&class));
+        let object_value = interpreter.environment.new_object();
+        let object_ref = interpreter.declare_variable(this, LoxValueKind::ObjectId(object_value));
+
+        let instance_raw = LoxInstance::new(object_ref, Rc::clone(&class));
+
+        let constructor = class
+          .methods
+          .get(&init)
+          .map(|constructor| instance_raw.bind_this(constructor));
+
         interpreter
           .environment
-          .assign(object, LoxValueKind::Object(instance_raw));
+          .assign(object_value, LoxValueKind::Object(instance_raw));
 
         // Constructor function
-        let init = INTERNER.with_borrow_mut(|i| i.intern("init"));
-        if let Some(constructor) = class.methods.get(&init) {
+        if let Some(constructor) = constructor {
           constructor.call(interpreter, arguments)?;
         }
 
-        Ok(object)
+        Ok(object_value)
       },
     )
   }
@@ -208,15 +217,38 @@ impl LoxClass {
 
 #[derive(Clone, Debug)]
 pub struct LoxInstance {
+  pub this: ObjectId,
   pub class: Rc<LoxClass>,
   pub fields: FxHashMap<SymbolId, ObjectId>,
 }
 
 impl LoxInstance {
-  pub fn new(class: Rc<LoxClass>) -> Self {
+  pub fn new(this: ObjectId, class: Rc<LoxClass>) -> Self {
     Self {
+      this,
       class,
       fields: FxHashMap::default(),
     }
+  }
+
+  pub fn bind_this(&self, function: &Function) -> Rc<dyn LoxCallable> {
+    let this_var = INTERNER.with_borrow_mut(|i| i.intern("this"));
+
+    let Function {
+      name,
+      closure,
+      formal_parameters,
+      body,
+    } = function;
+    let closure_with_this = closure.define(this_var, self.this);
+
+    let method_instance = Function {
+      name: *name,
+      closure: Rc::new(closure_with_this),
+      formal_parameters: formal_parameters.clone(),
+      body: *body,
+    };
+
+    Rc::new(method_instance)
   }
 }

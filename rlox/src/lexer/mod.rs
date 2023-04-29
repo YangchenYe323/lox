@@ -360,7 +360,6 @@ impl<'a> Lexer<'a> {
       "or" => Or,
       "return" => Return,
       "super" => Super,
-      "this" => This,
       "true" => True,
       "var" => Var,
       "while" => While,

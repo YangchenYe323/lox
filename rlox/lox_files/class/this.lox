@@ -1,0 +1,22 @@
+class A {
+  init() {
+    this.foo = 1;
+    this.bar = 2;
+  }
+
+  printFoo() {
+    print(this.foo)
+  }
+}
+
+var a = A()
+print(a.foo); // 1
+print(a.bar); // 2
+
+var a_printFoo = a.printFoo;
+a_printFoo(); // 1
+
+var b = A();
+b.foo = 3;
+a.bFoo = b.printFoo;
+a.bFoo(); // 3
