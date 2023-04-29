@@ -111,12 +111,20 @@ impl Parser {
 
     let method_start = self.cur_span_start();
     let methods = self.builder.start_method_list(method_start);
+    let static_methods = self.builder.start_method_list(method_start);
+
     while !self.advance_if_match(TokenKind::RBrace) {
+      let method_list = if self.advance_if_match(TokenKind::Class) {
+        &static_methods
+      } else {
+        &methods
+      };
       let function = self.with_context(ParserContextFlags::IN_FUNCTION_DECL, Parser::func)?;
-      self.builder.add_method(&methods, function);
+      self.builder.add_method(method_list, function);
     }
     let method_end = self.prev_token().span.end;
     let method_list = self.builder.finish_method_list(methods, method_end);
+    let static_method_list = self.builder.finish_method_list(static_methods, method_end);
 
     // advance "}"
     let end = self.prev_token().span.end;
@@ -124,7 +132,7 @@ impl Parser {
     Ok(
       self
         .builder
-        .class_declaration(Span::new(start, end), name, method_list),
+        .class_declaration(Span::new(start, end), name, method_list, static_method_list),
     )
   }
 

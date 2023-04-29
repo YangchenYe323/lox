@@ -423,10 +423,16 @@ impl SyntaxTreeBuilder {
     return_stmt
   }
 
-  pub fn class_declaration(&mut self, span: Span, name: SymbolId, methods: AstNodeId) -> AstNodeId {
+  pub fn class_declaration(
+    &mut self,
+    span: Span,
+    name: SymbolId,
+    methods: AstNodeId,
+    static_methods: AstNodeId,
+  ) -> AstNodeId {
     let inner = AstNode::new(span, AstNodeKind::ClassDecl(name));
     let class_decl = self.new_node(inner);
-    append_child!(class_decl, methods);
+    append_child!(class_decl, methods, static_methods);
     class_decl
   }
 

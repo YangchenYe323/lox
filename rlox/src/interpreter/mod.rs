@@ -23,7 +23,7 @@ use self::{
   objprint::Printable,
   runtime::Environment,
   scope::Scope,
-  types::{Function, LoxClass, LoxValueKind, ObjectId},
+  types::{Function, LoxCallable, LoxClass, LoxValueKind, ObjectId},
 };
 
 mod builtin_functions;
@@ -204,6 +204,19 @@ impl AstVisitor for Interpreter {
 
   fn visit_member_expression(&mut self, member_expr: MemberExpr) -> Self::Ret {
     let object = self.visit_expression(member_expr.object())?;
+
+    // Handle the special case of static method access: A.foo()
+    if let LoxValueKind::Class(c) = object {
+      return c
+        .static_methods
+        .get(&member_expr.property())
+        .map(|f| Ok(LoxValueKind::Callable(Rc::clone(f) as Rc<dyn LoxCallable>)))
+        .unwrap_or_else(|| {
+          let name = INTERNER.with_borrow(|i| i.get(member_expr.property()));
+          Err(member_expr.wrap(LoxRuntimeError::NoSuchProperty(name)))
+        });
+    }
+
     let LoxValueKind::ObjectId(id) = object else {
       return Err(member_expr.wrap(LoxRuntimeError::InvalidMemberAccess(object.type_name())));
     };

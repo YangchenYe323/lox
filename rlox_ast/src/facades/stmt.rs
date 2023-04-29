@@ -365,6 +365,10 @@ impl ClassDecl {
   pub fn method_list(&self) -> Methods {
     self.0.nth_child(0).map(Methods).unwrap()
   }
+
+  pub fn static_method_list(&self) -> Methods {
+    self.0.nth_child(1).map(Methods).unwrap()
+  }
 }
 
 impl Serialize for ClassDecl {
@@ -374,9 +378,11 @@ impl Serialize for ClassDecl {
   {
     let name = self.name();
     let methods = self.method_list();
-    let mut state = serializer.serialize_struct("ClassDecl", 2)?;
+    let static_methods = self.static_method_list();
+    let mut state = serializer.serialize_struct("ClassDecl", 3)?;
     state.serialize_field("name", &name)?;
     state.serialize_field("methods", &methods)?;
+    state.serialize_field("static_methods", &static_methods)?;
     state.end()
   }
 }

@@ -178,6 +178,7 @@ impl LoxCallable for Function {
 pub struct LoxClass {
   pub name: SymbolId,
   pub methods: FxHashMap<SymbolId, Rc<Function>>,
+  pub static_methods: FxHashMap<SymbolId, Rc<Function>>,
 }
 
 impl LoxClass {
@@ -193,7 +194,21 @@ impl LoxClass {
         (method_name, method)
       })
       .collect();
-    Self { name, methods }
+    let static_methods = class
+      .static_method_list()
+      .methods()
+      .map(|method| {
+        let method_name = method.name();
+        let method = Rc::new(Function::new(false, method, Rc::clone(&closure)));
+        (method_name, method)
+      })
+      .collect();
+
+    Self {
+      name,
+      methods,
+      static_methods,
+    }
   }
 
   pub fn new_instance(
