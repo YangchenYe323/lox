@@ -177,13 +177,24 @@ impl LoxCallable for Function {
 #[derive(Clone, Debug)]
 pub struct LoxClass {
   pub name: SymbolId,
+  pub super_class: Option<Rc<LoxClass>>,
   pub methods: FxHashMap<SymbolId, Rc<Function>>,
   pub static_methods: FxHashMap<SymbolId, Rc<Function>>,
 }
 
 impl LoxClass {
-  pub fn new(class: ClassDecl, closure: Rc<Scope>) -> Self {
+  pub fn new(class: ClassDecl, super_class: Option<Rc<LoxClass>>, interpreter: &mut Interpreter) -> Self {
     let name = class.name();
+    let super_var = INTERNER.with_borrow_mut(|i| i.intern("super"));
+
+    let closure = if let Some(super_class) = &super_class {
+      // bind "super" at class definition time.
+      let _super_class_value = interpreter.declare_variable(super_var, LoxValueKind::Class(Rc::clone(super_class)));
+      Rc::clone(&interpreter.active_scope)
+    } else {
+      Rc::clone(&interpreter.active_scope)
+    };
+
     let methods = class
       .method_list()
       .methods()
@@ -206,6 +217,7 @@ impl LoxClass {
 
     Self {
       name,
+      super_class,
       methods,
       static_methods,
     }
@@ -218,6 +230,7 @@ impl LoxClass {
   ) -> Result<ObjectId, LoxRuntimeError> {
     let this = INTERNER.with_borrow_mut(|i| i.intern("this"));
     let init = INTERNER.with_borrow_mut(|i| i.intern("init"));
+    let super_var = INTERNER.with_borrow_mut(|i| i.intern("super"));
 
     interpreter.with_scope(
       interpreter.active_scope.spawn_empty_child(),
@@ -225,6 +238,10 @@ impl LoxClass {
         // Step 1: Allocate memory and bind "this" variable.
         let object_value = interpreter.environment.new_object();
         let object_ref = interpreter.declare_variable(this, LoxValueKind::ObjectId(object_value));
+        if let Some(super_class) = &class.super_class {
+          // Bind "super" to the instance of the super class.
+          let _super_value = interpreter.declare_variable(super_var, LoxValueKind::Class(Rc::clone(super_class)));
+        }
 
         let instance_raw = LoxInstance::new(object_ref, Rc::clone(&class));
 
@@ -245,6 +262,20 @@ impl LoxClass {
         Ok(object_value)
       },
     )
+  }
+
+  pub fn resolve_method(&self, method_nmae: SymbolId) -> Option<Rc<Function>> {
+    let mut cur = self;
+    loop {
+      if let Some(f) = cur.methods.get(&method_nmae) {
+        return Some(Rc::clone(f));
+      }
+      if let Some(super_class) = &cur.super_class {
+        cur = super_class;
+      } else {
+        return None;
+      }
+    }
   }
 }
 

@@ -97,14 +97,32 @@ impl Parser {
     }
   }
 
-  /// classDecl → "class" IDENTIFIER "{" function* "}" ;
   pub fn class_decl(&mut self) -> ParserResult<AstNodeId> {
+    self.with_context(ParserContextFlags::IN_CLASS, Parser::class)
+  }
+
+  /// classDecl → "class" IDENTIFIER ( "<" IDENTIFIER )? "{" function* "}" ;
+  pub fn class(&mut self) -> ParserResult<AstNodeId> {
     let start = self.cur_span_start();
     self.advance();
     let TokenKind::Ident(name) = self.cur_token().kind else {
       return Err(unexpected_token(self.cur_token()));
     };
     self.advance();
+
+    // match superclass if any
+    let parent_class = if self.advance_if_match(TokenKind::Less) {
+      match self.cur_token().kind {
+        TokenKind::Ident(symbol) => {
+          self.advance();
+          Some(symbol)
+        }
+        _ => return Err(unexpected_token(self.cur_token())),
+      }
+    } else {
+      None
+    };
+
     if !self.advance_if_match(TokenKind::LBrace) {
       return Err(unexpected_token(self.cur_token()));
     }
@@ -129,11 +147,13 @@ impl Parser {
     // advance "}"
     let end = self.prev_token().span.end;
 
-    Ok(
-      self
-        .builder
-        .class_declaration(Span::new(start, end), name, method_list, static_method_list),
-    )
+    Ok(self.builder.class_declaration(
+      Span::new(start, end),
+      name,
+      parent_class,
+      method_list,
+      static_method_list,
+    ))
   }
 
   /// funDecl → "fun" function ;
@@ -567,7 +587,7 @@ impl Parser {
     }
   }
 
-  /// primary → NUMBER | STRING | "true" | "false" | "nil"
+  /// primary → NUMBER | STRING | "true" | "false" | "nil"  | super
   ///   | "(" expression ")" ;
   pub fn primary(&mut self) -> ParserResult<AstNodeId> {
     let span = self.cur_token().span;
@@ -603,6 +623,14 @@ impl Parser {
         let end = self.prev_token().span.end;
         let paren_span = Span::new(span.start, end);
         Ok(self.builder.re_span(expr, paren_span))
+      }
+      TokenKind::Super => {
+        if !self.in_class() {
+            self.recovered_errors.push(ParserError::SuperOutsideClass(self.cur_token().span));
+        }
+        let span = self.cur_token().span;
+        self.advance();
+        Ok(self.builder.super_expression(span))
       }
       TokenKind::Ident(symbol) => {
         self.advance();

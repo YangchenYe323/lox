@@ -1,0 +1,15 @@
+class Parent {
+  foo() {
+    return 1;
+  }
+}
+
+class Child1 < Parent {}
+class Child2 < Parent {
+  foo() {
+    return 2;
+  }
+}
+
+print(Child1().foo())
+print(Child2().foo())

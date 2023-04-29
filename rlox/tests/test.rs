@@ -27,6 +27,8 @@ rlox_macros::declare_interpreter_tests! {
   class::this,
   class::this_ret,
   class::static_method,
+  class::inheritance,
+  class::super_class,
   conditionals::if1,
   expression::assign,
   loops::nested_while,

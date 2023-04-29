@@ -1,4 +1,4 @@
-use crate::facades::{ClassDecl, MemberExpr};
+use crate::facades::{ClassDecl, MemberExpr, SuperExpr};
 
 use super::facades::{
   AssignExpr, BinaryExpr, Block, BoolLit, BreakStmt, CallExpr, Expr, ExprStmt, FnDecl, IfStmt,
@@ -32,6 +32,8 @@ pub trait AstVisitor {
   fn visit_if_statement(&mut self, if_stmt: IfStmt) -> Self::Ret;
 
   fn visit_expression(&mut self, expr: Expr) -> Self::Ret;
+
+  fn visit_super_expression(&mut self, super_expr: SuperExpr) -> Self::Ret;
 
   fn visit_member_expression(&mut self, member_expr: MemberExpr) -> Self::Ret;
 

@@ -7,6 +7,7 @@ bitflags! {
   pub struct ParserContextFlags: u32 {
     const IN_LOOP = 1 << 0;
     const IN_FUNCTION_DECL = 1 << 1;
+    const IN_CLASS = 1 << 2;
   }
 }
 
@@ -17,6 +18,10 @@ impl Parser {
 
   pub fn in_loop(&self) -> bool {
     self.context.contains(ParserContextFlags::IN_LOOP)
+  }
+
+  pub fn in_class(&self) -> bool {
+    self.context.contains(ParserContextFlags::IN_CLASS)
   }
 
   pub fn with_context<T>(

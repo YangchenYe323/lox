@@ -6,7 +6,7 @@ use rlox_ast::{
   facades::{
     AssignExpr, AssignTarget, BinaryExpr, Block, BoolLit, BreakStmt, CallExpr, ClassDecl, Expr,
     ExprStmt, FnDecl, IfStmt, LogicExpr, MemberExpr, NilLit, NumericLit, Program, ReturnStmt, Stmt,
-    StringLit, TernaryExpr, UnaryExpr, Var, VarDecl, WhileStmt,
+    StringLit, SuperExpr, TernaryExpr, UnaryExpr, Var, VarDecl, WhileStmt,
   },
   visit::AstVisitor,
   LogicalOp, INTERNER,
@@ -16,9 +16,7 @@ use rustc_hash::FxHashMap;
 
 use self::{
   builtin_functions::{builtin_get_object_id, builtin_heap, builtin_print, builtin_time},
-  diagnostics::{
-    no_such_property, LoxRuntimeError, SpannedLoxRuntimeError, SpannedLoxRuntimeErrorWrapper,
-  },
+  diagnostics::{LoxRuntimeError, SpannedLoxRuntimeError, SpannedLoxRuntimeErrorWrapper, no_such_property},
   eval::{logical_and, logical_or, BinaryEval, UnaryEval},
   objprint::Printable,
   runtime::Environment,
@@ -141,7 +139,21 @@ impl AstVisitor for Interpreter {
     let name = class_decl.name();
     let object = self.declare_variable(name, LoxValueKind::nil());
 
-    let class = LoxClass::new(class_decl, Rc::clone(&self.active_scope));
+    // Resolve inheritance
+    let super_class = if let Some(parent) = class_decl.superclass() {
+      let object = self
+        .active_scope
+        .get_lvalue_symbol(parent)
+        .ok_or_else(|| class_decl.wrap(LoxRuntimeError::UnresolvedReference))?;
+      match self.environment.get_rvalue(object) {
+        LoxValueKind::Class(c) => Some(c),
+        value => return Err(class_decl.wrap(LoxRuntimeError::InvalidInherit(value.type_name()))),
+      }
+    } else {
+      None
+    };
+
+    let class = LoxClass::new(class_decl, super_class, self);
     self
       .environment
       .assign(object, LoxValueKind::Class(Rc::new(class)));
@@ -199,13 +211,26 @@ impl AstVisitor for Interpreter {
       Expr::Var(e) => self.visit_var_reference(e),
       Expr::Nil(e) => self.visit_nil(e),
       Expr::Member(e) => self.visit_member_expression(e),
+      Expr::Super(e) => self.visit_super_expression(e),
     }
+  }
+
+  fn visit_super_expression(&mut self, _super_expr: SuperExpr) -> Self::Ret {
+    // Taking a fast route here, super refers to the same object as this, but using the parent class
+    // instead of the direct class
+    let object = self
+      .active_scope
+      .get_lvalue_symbol(INTERNER.with_borrow_mut(|i| i.intern("this")))
+      .unwrap();
+    // Has to be an object id
+    let object = self.environment.get_rvalue(object);
+    Ok(object)
   }
 
   fn visit_member_expression(&mut self, member_expr: MemberExpr) -> Self::Ret {
     let object = self.visit_expression(member_expr.object())?;
 
-    // Handle the special case of static method access: A.foo()
+    // static method access: A.foo()
     if let LoxValueKind::Class(c) = object {
       return c
         .static_methods
@@ -217,6 +242,7 @@ impl AstVisitor for Interpreter {
         });
     }
 
+    let is_super = matches!(member_expr.object(), Expr::Super(_));
     let LoxValueKind::ObjectId(id) = object else {
       return Err(member_expr.wrap(LoxRuntimeError::InvalidMemberAccess(object.type_name())));
     };
@@ -225,11 +251,17 @@ impl AstVisitor for Interpreter {
     // Search in property
     if let Some(property) = object.fields.get(&member_expr.property()) {
       Ok(self.environment.get_rvalue(*property))
-    } else if let Some(function) = object.class.methods.get(&member_expr.property()) {
-      // search in method
-      Ok(LoxValueKind::Callable(object.bind_this(function.as_ref())))
     } else {
-      Err(member_expr.wrap(no_such_property(member_expr.property())))
+      let method = if is_super {
+        let super_var = INTERNER.with_borrow_mut(|i| i.intern("super"));
+        let super_class = self.active_scope.get_lvalue_symbol(super_var).ok_or_else(|| member_expr.wrap(LoxRuntimeError::NoSuper))?;
+        let LoxValueKind::Class(c) = self.environment.get_rvalue(super_class) else { unreachable!() };
+        c.resolve_method(member_expr.property())
+      } else {
+        object.class.resolve_method(member_expr.property())
+      }.ok_or_else(|| member_expr.wrap(no_such_property(member_expr.property())))?;
+
+      Ok(LoxValueKind::Callable(object.bind_this(&method)))
     }
   }
 

@@ -22,6 +22,7 @@ pub enum Expr {
   Number(NumericLit),
   Bool(BoolLit),
   Var(Var),
+  Super(SuperExpr),
   Nil(NilLit),
 }
 
@@ -40,6 +41,7 @@ impl Spanned for Expr {
       Expr::Assign(e) => e.span(),
       Expr::Logic(e) => e.span(),
       Expr::Member(e) => e.span(),
+      Expr::Super(e) => e.span(),
     }
   }
 }
@@ -60,6 +62,7 @@ impl Expr {
       AstNodeKind::Var(_) => Var(self::Var(ptr)),
       AstNodeKind::Nil => Nil(NilLit(ptr)),
       AstNodeKind::Member(_) => Member(MemberExpr(ptr)),
+      AstNodeKind::Super => Super(SuperExpr(ptr)),
       _ => unreachable!(),
     }
   }
@@ -512,6 +515,24 @@ impl Serialize for MemberExpr {
 }
 
 impl Spanned for MemberExpr {
+  fn span(&self) -> Span {
+    self.0.span()
+  }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct SuperExpr(AstNodePtr);
+
+impl Serialize for SuperExpr {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: serde::Serializer,
+  {
+    serializer.serialize_str("super")
+  }
+}
+
+impl Spanned for SuperExpr {
   fn span(&self) -> Span {
     self.0.span()
   }

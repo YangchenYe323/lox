@@ -19,6 +19,8 @@ pub enum ParserError {
   TooManyArguments(#[label] Span),
   #[error("Function can have at most 255 parameters")]
   TooManyParameters(#[label] Span),
+  #[error("Super cannot be used outside of class")]
+  SuperOutsideClass(#[label] Span),
 }
 
 pub fn unexpected_token(token: &Token) -> ParserError {

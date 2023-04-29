@@ -81,7 +81,7 @@ pub enum AstNodeKind {
   Program,
   // Declaration
   VarDecl(SymbolId),
-  ClassDecl(SymbolId),
+  ClassDecl(SymbolId, Option<SymbolId>),
   Methods,
   // Statements
   ExprStmt,
@@ -105,6 +105,7 @@ pub enum AstNodeKind {
   NumLiteral(SymbolId, f64),
   BoolLiteral(bool),
   Var(SymbolId),
+  Super,
   Nil,
 }
 
@@ -427,10 +428,11 @@ impl SyntaxTreeBuilder {
     &mut self,
     span: Span,
     name: SymbolId,
+    parent: Option<SymbolId>,
     methods: AstNodeId,
     static_methods: AstNodeId,
   ) -> AstNodeId {
-    let inner = AstNode::new(span, AstNodeKind::ClassDecl(name));
+    let inner = AstNode::new(span, AstNodeKind::ClassDecl(name, parent));
     let class_decl = self.new_node(inner);
     append_child!(class_decl, methods, static_methods);
     class_decl
@@ -462,6 +464,11 @@ impl SyntaxTreeBuilder {
     let member = self.new_node(inner);
     append_child!(member, object);
     member
+  }
+
+  pub fn super_expression(&mut self, span: Span) -> AstNodeId {
+    let inner = AstNode::new(span, AstNodeKind::Super);
+    self.new_node(inner)
   }
 
   pub fn re_span(&mut self, node_id: AstNodeId, new_span: Span) -> AstNodeId {

@@ -33,7 +33,7 @@ impl Stmt {
       AstNodeKind::Break => Self::Break(BreakStmt(ptr)),
       AstNodeKind::FnDecl(_) => Self::FnDecl(FnDecl(ptr)),
       AstNodeKind::Return => Self::Return(ReturnStmt(ptr)),
-      AstNodeKind::ClassDecl(_) => Self::ClassDecl(ClassDecl(ptr)),
+      AstNodeKind::ClassDecl(_, _) => Self::ClassDecl(ClassDecl(ptr)),
       k => {
         unreachable!(
           "Shouldn't construct statement out of AST Node kind: {:?}",
@@ -357,7 +357,14 @@ pub struct ClassDecl(AstNodePtr);
 impl ClassDecl {
   pub fn name(&self) -> SymbolId {
     match self.0.get().inner {
-      AstNodeKind::ClassDecl(name) => name,
+      AstNodeKind::ClassDecl(name, _) => name,
+      _ => unreachable!(),
+    }
+  }
+
+  pub fn superclass(&self) -> Option<SymbolId> {
+    match self.0.get().inner {
+      AstNodeKind::ClassDecl(_, parent) => parent,
       _ => unreachable!(),
     }
   }

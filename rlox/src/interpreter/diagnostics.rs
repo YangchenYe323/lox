@@ -27,8 +27,12 @@ pub enum LoxRuntimeError {
   NoSuchProperty(/* property */ &'static str),
   #[error("RuntimeError: Object of type {0} is not callable")]
   InalidCall(&'static str),
+  #[error("RuntimeError: Cannot inherit from {0}, which is not a class")]
+  InvalidInherit(&'static str),
   #[error("RuntimeError: Cannot return from initializer")]
   ReturnFromInit,
+  #[error("RuntimeError: Calling super on a class with no super class")]
+  NoSuper,
   /// A catch-all case for all non-lox related error produced by rust code itself
   #[error("{0}")]
   SystemError(Box<dyn std::error::Error + Send + Sync + 'static>),
