@@ -31,6 +31,13 @@ var a = a + 1; // OK: a = 2
 - [x] Block level scoping rules
 + Block scope is implementd at runtime rather than compile time, using the aproach of persistent runtime scope chain (See [scope.rs](/rlox/src/interpreter/scope.rs))
 - [x] Class
++ static member funtion is supported with the syntax:
+```
+class Foo {
+  class staticMethod() {
+  }
+}
+```
 - [ ] inheritance and dynamic dispatch
 - [x] An REPL terminal client with history support: `cargo run -p rlox`
 - [ ] Garbage Collection (Maybe using reference count?)
