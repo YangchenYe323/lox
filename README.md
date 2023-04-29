@@ -38,7 +38,7 @@ class Foo {
   }
 }
 ```
-- [ ] inheritance and dynamic dispatch
+- [x] inheritance and dynamic dispatch
 - [x] An REPL terminal client with history support: `cargo run -p rlox`
 
 #### Bytecode Virtual Machine
