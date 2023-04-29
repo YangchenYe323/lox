@@ -39,6 +39,9 @@ class Foo {
 }
 ```
 - [x] inheritance and dynamic dispatch
++ The "this" identifier is binded at method invocation time to the actual object on which the method is invoked.
++ The "super" identifier is binded at method creation time to the super class, if any, of the method's defining class.
+
 - [x] An REPL terminal client with history support: `cargo run -p rlox`
 
 #### Bytecode Virtual Machine
