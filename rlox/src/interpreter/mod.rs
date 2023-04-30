@@ -16,7 +16,7 @@ use rustc_hash::FxHashMap;
 
 use self::{
   builtin_functions::{builtin_get_object_id, builtin_heap, builtin_print, builtin_time},
-  diagnostics::{SpannedLoxRuntimeErrorWrapper, no_such_property},
+  diagnostics::{no_such_property, SpannedLoxRuntimeErrorWrapper},
   eval::{logical_and, logical_or, BinaryEval, UnaryEval},
   runtime::Environment,
   scope::Scope,

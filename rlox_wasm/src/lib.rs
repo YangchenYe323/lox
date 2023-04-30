@@ -7,22 +7,28 @@ use rlox::{
 use rlox_ast::{facades::Program, visit::AstVisitor};
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
+use wasm_typescript_definition::TypescriptDefinition;
 
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
-#[derive(Serialize)]
-#[serde(tag = "type")]
+#[derive(Serialize, TypescriptDefinition)]
 pub enum Error {
-  LexError(Vec<String>),
-  ParseError {
-    recovered: Vec<String>,
-    unrecoverable: Option<String>,
-  },
+  LexError(LexError),
+  ParseError(ParseError),
   RuntimeError(String),
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, TypescriptDefinition)]
+pub struct LexError(Vec<String>);
+
+#[derive(Serialize, TypescriptDefinition)]
+pub struct ParseError {
+  recovered: Vec<String>,
+  unrecoverable: Option<String>,
+}
+
+#[derive(Serialize, TypescriptDefinition)]
 #[serde(tag = "code")]
 pub enum InterpretResult {
   Error(Error),
@@ -31,12 +37,6 @@ pub enum InterpretResult {
     stdout: String,
   },
 }
-
-// #[derive(Serialize)]
-// pub struct InterpretResult {
-//   return_value: String,
-//   stdout: String,
-// }
 
 #[wasm_bindgen]
 pub struct InterpreterHandle {
@@ -108,10 +108,10 @@ impl InterpreterHandle {
       .map(|error| self.render_error(error, source))
       .collect();
     let unrecoverable = unrecoverrable.map(|error| self.render_error(error, source));
-    Error::ParseError {
+    Error::ParseError(ParseError {
       recovered,
       unrecoverable,
-    }
+    })
   }
 
   fn report_lex_error(&self, source: &str, errors: Vec<LexerError>) -> Error {
@@ -119,7 +119,7 @@ impl InterpreterHandle {
       .into_iter()
       .map(|e| self.render_error(e, source))
       .collect();
-    Error::LexError(errors)
+    Error::LexError(LexError(errors))
   }
 
   fn report_runtime_error(&self, source: &str, error: SpannedLoxRuntimeError) -> Error {
