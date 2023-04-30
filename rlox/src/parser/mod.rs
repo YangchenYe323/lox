@@ -13,8 +13,10 @@ use rlox_span::Span;
 
 use self::{
   context::ParserContextFlags,
-  diagnostics::{unexpected_token, ParserError},
+  diagnostics::unexpected_token,
 };
+
+pub use self::diagnostics::ParserError;
 
 type ParserResult<T, E = ParserError> = std::result::Result<T, E>;
 

@@ -1,0 +1,29 @@
+[package]
+name = "rlox_wasm"
+version = "0.1.0"
+description = "lox programming language interpreter"
+license = "apache-2.0"
+authors = ["Yangchen <eikasia30@gmail.com>"]
+edition = "2021"
+keywords = ["interpreter"]
+repository = "https://github.com/YangchenYe323/crafting-interpreter"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+wasm-bindgen = "0.2.74"
+js-sys = "0.3.61"
+miette = { workspace = true }
+serde = { workspace = true }
+serde-wasm-bindgen = "0.4"
+wee_alloc = "0.4.5"
+
+rlox = { workspace = true }
+rlox_ast = { workspace = true }
+
+[profile.release]
+# Tell `rustc` to optimize for small code size.
+opt-level = "s"

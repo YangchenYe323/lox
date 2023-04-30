@@ -4,9 +4,9 @@
 
 //! This crate implements a tree-walking interpreter in rust from [crafting-interpreters](https://craftinginterpreters.com/)
 
-mod interpreter;
-mod lexer;
-mod parser;
+pub mod interpreter;
+pub mod lexer;
+pub mod parser;
 
 use std::borrow::Cow;
 

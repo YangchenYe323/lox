@@ -16,13 +16,15 @@ use rustc_hash::FxHashMap;
 
 use self::{
   builtin_functions::{builtin_get_object_id, builtin_heap, builtin_print, builtin_time},
-  diagnostics::{LoxRuntimeError, SpannedLoxRuntimeError, SpannedLoxRuntimeErrorWrapper, no_such_property},
+  diagnostics::{SpannedLoxRuntimeErrorWrapper, no_such_property},
   eval::{logical_and, logical_or, BinaryEval, UnaryEval},
-  objprint::Printable,
   runtime::Environment,
   scope::Scope,
   types::{Function, LoxCallable, LoxClass, LoxValueKind, ObjectId},
 };
+
+pub use self::diagnostics::{LoxRuntimeError, SpannedLoxRuntimeError};
+pub use self::objprint::Printable;
 
 mod builtin_functions;
 mod diagnostics;
