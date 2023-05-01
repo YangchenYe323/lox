@@ -17,12 +17,18 @@ pub struct InterpreterHandle {
   reporter: Box<GraphicalReportHandler>,
 }
 
+impl Default for InterpreterHandle {
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
 #[wasm_bindgen]
 impl InterpreterHandle {
   #[wasm_bindgen(constructor)]
   pub fn new() -> InterpreterHandle {
     InterpreterHandle {
-      interpreter: Box::new(Interpreter::default()),
+      interpreter: Box::<Interpreter>::default(),
       reporter: Box::new(GraphicalReportHandler::new_themed(
         GraphicalTheme::unicode_nocolor(),
       )),

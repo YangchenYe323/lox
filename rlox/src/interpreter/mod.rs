@@ -12,7 +12,6 @@ use rlox_ast::{
   LogicalOp, INTERNER,
 };
 use rlox_span::SymbolId;
-use rustc_hash::FxHashMap;
 
 use self::{
   builtin_functions::{builtin_get_object_id, builtin_heap, builtin_print, builtin_time},
@@ -448,22 +447,22 @@ impl Interpreter {
 
 fn setup_globals() -> (Environment, Rc<Scope>) {
   let mut env = Environment::default();
-  let mut symbols = FxHashMap::default();
-  populate_global(&mut env, &mut symbols, "time", builtin_time);
-  populate_global(&mut env, &mut symbols, "print", builtin_print);
-  populate_global(&mut env, &mut symbols, "heap", builtin_heap);
-  populate_global(&mut env, &mut symbols, "object_id", builtin_get_object_id);
-  (env, Rc::new(Scope::new(symbols, None)))
+  let mut scope = Rc::new(Scope::default());
+  populate_global(&mut env, &mut scope, "time", builtin_time);
+  populate_global(&mut env, &mut scope, "print", builtin_print);
+  populate_global(&mut env, &mut scope, "heap", builtin_heap);
+  populate_global(&mut env, &mut scope, "object_id", builtin_get_object_id);
+  (env, scope)
 }
 
 fn populate_global(
   environment: &mut Environment,
-  symbols: &mut FxHashMap<SymbolId, ObjectId>,
+  symbols: &mut Rc<Scope>,
   name: &'static str,
   value: impl FnOnce(SymbolId) -> LoxValueKind,
 ) {
   let symbol = INTERNER.with_borrow_mut(|interner| interner.intern(name));
   let object = environment.new_object();
-  symbols.insert(symbol, object);
+  *symbols = Rc::new(Scope::new(Some((symbol, object)), Some(Rc::clone(symbols))));
   environment.assign(object, value(symbol));
 }
