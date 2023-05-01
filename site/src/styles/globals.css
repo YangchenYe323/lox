@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: #bde0fe;
+  --background-end-rgb: #ffffff;
+
+  --line_color: #555555;
+  --back_color: #ffecf6;
+}
+
+html {
+  height: 100%;
+  margin: 0;
+}
+div#__next,
+div#__next > div {
+  height: 100%;
+}
+
+body {
+  height: 100%;
+  margin: 0;
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+    to left top,
+    var(--background-start-rgb),
+    var(--background-end-rgb)
+  );
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  white-space: pre-line;
+}
