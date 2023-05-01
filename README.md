@@ -1,5 +1,5 @@
 # crafting-interpreter ![test](https://github.com/YangchenYe323/lox/actions/workflows/test.yml/badge.svg)
-My implementation of the lox programming language in rust following [Crafting Intepretors](https://craftinginterpreters.com/)
+My implementation of the lox programming language in rust following [Crafting Intepretors](https://craftinginterpreters.com/) (Try it out online at https://yangchenye323.github.io/lox/)
 
 - [x] Scanning
 - [x] Parsing ASTs
