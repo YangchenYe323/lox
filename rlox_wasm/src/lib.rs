@@ -58,7 +58,7 @@ impl InterpreterHandle {
 
     match result {
       Ok(returned) => {
-        let returned = self.interpreter.value_to_string(&returned);
+        let returned = returned.to_string();
         let stdout = self.interpreter.drain_output();
         let output = returned + &stdout;
         InterpreterResult::new(true, output)

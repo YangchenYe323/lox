@@ -3,7 +3,7 @@ use std::rc::Rc;
 use rlox_span::SymbolId;
 
 use crate::interpreter::{
-  diagnostics::{system_error, LoxRuntimeError},
+  diagnostics::LoxRuntimeError,
   types::{LoxCallable, LoxValueKind},
   Interpreter,
 };
@@ -14,13 +14,9 @@ pub struct Heap(SymbolId);
 impl LoxCallable for Heap {
   fn call(
     &self,
-    evaluator: &mut Interpreter,
+    _evaluator: &mut Interpreter,
     _arguments: Vec<LoxValueKind>,
   ) -> Result<LoxValueKind, LoxRuntimeError> {
-    use std::fmt::Write;
-    for (idx, value) in evaluator.environment.memory.iter().enumerate() {
-      writeln!(&mut evaluator.output, "{}: {:?}", idx + 1, value).map_err(system_error)?;
-    }
     Ok(LoxValueKind::nil())
   }
 

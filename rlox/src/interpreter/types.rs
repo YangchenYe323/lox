@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::fmt::Debug;
 use std::{num::NonZeroUsize, rc::Rc};
 
@@ -13,8 +14,6 @@ use rlox_span::SymbolId;
 use rustc_hash::FxHashMap;
 
 /// [LoxValueKind] describes the available values of a lox object stored in a variable.
-/// Since lox is dynamically typed, every variable is mapped to an [ObjectId], which stores
-/// [LoxValueKind]
 #[derive(Clone)]
 pub enum LoxValueKind {
   // User facing values, i.e., can be stored directly in variables
@@ -22,12 +21,31 @@ pub enum LoxValueKind {
   String(String),
   Boolean(bool),
   Callable(Rc<dyn LoxCallable>),
-  ObjectId(ObjectId),
   Nil,
-
-  // Internal values, no user variable would directly store these.
   Class(Rc<LoxClass>),
-  Object(LoxInstance),
+  Object(Rc<RefCell<LoxInstance>>),
+}
+
+impl std::fmt::Display for LoxValueKind {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    match self {
+      LoxValueKind::Number(n) => write!(f, "{}", n),
+      LoxValueKind::String(s) => write!(f, "{}", s),
+      LoxValueKind::Boolean(b) => write!(f, "{}", b),
+      LoxValueKind::Callable(c) => {
+        let name = INTERNER.with_borrow(|i| i.get(c.name()));
+        write!(f, "Callable({})", name)
+      }
+      LoxValueKind::Nil => write!(f, "nil"),
+      LoxValueKind::Class(c) => {
+        let name = INTERNER.with_borrow(|i| i.get(c.name));
+        write!(f, "Class({})", name)
+      }
+      LoxValueKind::Object(o) => {
+        write!(f, "Object({})", &o.borrow().class)
+      }
+    }
+  }
 }
 
 impl std::fmt::Debug for LoxValueKind {
@@ -37,7 +55,6 @@ impl std::fmt::Debug for LoxValueKind {
       Self::String(arg0) => f.debug_tuple("String").field(arg0).finish(),
       Self::Boolean(arg0) => f.debug_tuple("Boolean").field(arg0).finish(),
       Self::Callable(_arg0) => f.debug_tuple("Callable").finish(),
-      Self::ObjectId(arg0) => f.debug_tuple("ObjectId").field(arg0).finish(),
       Self::Class(arg0) => f.debug_tuple("Class").field(arg0).finish(),
       Self::Object(arg0) => f.debug_tuple("Object").field(arg0).finish(),
       Self::Nil => f.debug_tuple("Nil").finish(),
@@ -56,9 +73,9 @@ impl LoxValueKind {
       LoxValueKind::Number(n) => *n != 0.0,
       LoxValueKind::String(s) => !s.is_empty(),
       LoxValueKind::Boolean(b) => *b,
-      LoxValueKind::ObjectId(_) => true,
       LoxValueKind::Nil => false,
       LoxValueKind::Callable(_) => true,
+      LoxValueKind::Object(_) => true,
       _ => unreachable!(),
     }
   }
@@ -68,11 +85,10 @@ impl LoxValueKind {
       LoxValueKind::Number(_) => "Number",
       LoxValueKind::String(_) => "String",
       LoxValueKind::Boolean(_) => "Boolean",
-      LoxValueKind::ObjectId(_) => "Object",
       LoxValueKind::Callable(_) => "Callable",
       LoxValueKind::Nil => "Nil",
       LoxValueKind::Class(_) => "Class",
-      LoxValueKind::Object(_) => "ObjectValue",
+      LoxValueKind::Object(_) => "Object",
       // _ => unreachable!(),
     }
   }
@@ -155,10 +171,7 @@ impl LoxCallable for Function {
         }
         let this_var = INTERNER.with_borrow_mut(|i| i.intern("this"));
         let this_ref = evaluator.active_scope.get_lvalue_symbol(this_var).unwrap();
-        let LoxValueKind::ObjectId(this_value) = evaluator.environment.get_rvalue(this_ref) else { unreachable!() };
-        Ok(LoxValueKind::ObjectId(
-          this_value
-        ))
+        Ok(this_ref)
       } else {
         Ok(ret)
       }
@@ -183,13 +196,18 @@ pub struct LoxClass {
 }
 
 impl LoxClass {
-  pub fn new(class: ClassDecl, super_class: Option<Rc<LoxClass>>, interpreter: &mut Interpreter) -> Self {
+  pub fn new(
+    class: ClassDecl,
+    super_class: Option<Rc<LoxClass>>,
+    interpreter: &mut Interpreter,
+  ) -> Self {
     let name = class.name();
     let super_var = INTERNER.with_borrow_mut(|i| i.intern("super"));
 
     let closure = if let Some(super_class) = &super_class {
       // bind "super" at class definition time.
-      let _super_class_value = interpreter.declare_variable(super_var, LoxValueKind::Class(Rc::clone(super_class)));
+      let _super_class_value =
+        interpreter.declare_variable(super_var, LoxValueKind::Class(Rc::clone(super_class)));
       Rc::clone(&interpreter.active_scope)
     } else {
       Rc::clone(&interpreter.active_scope)
@@ -227,39 +245,29 @@ impl LoxClass {
     class: Rc<LoxClass>,
     interpreter: &mut Interpreter,
     arguments: Vec<LoxValueKind>,
-  ) -> Result<ObjectId, LoxRuntimeError> {
-    let this = INTERNER.with_borrow_mut(|i| i.intern("this"));
+  ) -> Result<LoxValueKind, LoxRuntimeError> {
     let init = INTERNER.with_borrow_mut(|i| i.intern("init"));
-    let super_var = INTERNER.with_borrow_mut(|i| i.intern("super"));
 
     interpreter.with_scope(
       interpreter.active_scope.spawn_empty_child(),
       |interpreter| {
-        // Step 1: Allocate memory and bind "this" variable.
-        let object_value = interpreter.environment.new_object();
-        let object_ref = interpreter.declare_variable(this, LoxValueKind::ObjectId(object_value));
-        if let Some(super_class) = &class.super_class {
-          // Bind "super" to the instance of the super class.
-          let _super_value = interpreter.declare_variable(super_var, LoxValueKind::Class(Rc::clone(super_class)));
-        }
+        let instance_raw = LoxInstance::new(Rc::clone(&class));
 
-        let instance_raw = LoxInstance::new(object_ref, Rc::clone(&class));
+        let instance_value = LoxValueKind::Object(Rc::new(RefCell::new(instance_raw)));
+        let LoxValueKind::Object(instance) = &instance_value else { unreachable!() };
+        instance.borrow_mut().set_this(instance_value.clone());
 
         let constructor = class
           .methods
           .get(&init)
-          .map(|constructor| instance_raw.bind_this(constructor));
-
-        interpreter
-          .environment
-          .assign(object_value, LoxValueKind::Object(instance_raw));
+          .map(|constructor| instance.borrow().bind_this(constructor));
 
         // Constructor function
         if let Some(constructor) = constructor {
           constructor.call(interpreter, arguments)?;
         }
 
-        Ok(object_value)
+        Ok(instance_value)
       },
     )
   }
@@ -279,23 +287,32 @@ impl LoxClass {
   }
 }
 
+impl std::fmt::Display for LoxClass {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    let name = INTERNER.with_borrow(|i| i.get(self.name));
+    write!(f, "Class({})", name)
+  }
+}
+
 #[derive(Clone, Debug)]
 pub struct LoxInstance {
-  pub this: ObjectId,
+  pub this: LoxValueKind,
   pub class: Rc<LoxClass>,
-  pub fields: FxHashMap<SymbolId, ObjectId>,
+  pub fields: FxHashMap<SymbolId, LoxValueKind>,
 }
 
 impl LoxInstance {
   /// Create a new [LoxInstance]
-  /// Note that the 'this' stores another [ObjectId] which stores this instance.
-  /// This is to make sure the 'this' variable is accessed in the same way as other object references.
-  pub fn new(this: ObjectId, class: Rc<LoxClass>) -> Self {
+  pub fn new(class: Rc<LoxClass>) -> Self {
     Self {
-      this,
+      this: LoxValueKind::nil(),
       class,
       fields: FxHashMap::default(),
     }
+  }
+
+  pub fn set_this(&mut self, this: LoxValueKind) {
+    self.this = this;
   }
 
   /// Bind a [Function]'s 'this' variable to the current instance.
@@ -309,7 +326,7 @@ impl LoxInstance {
       formal_parameters,
       body,
     } = function;
-    let closure_with_this = closure.define(this_var, self.this);
+    let closure_with_this = closure.define(this_var, self.this.clone());
 
     let method_instance = Function {
       is_init: *is_init,
@@ -320,5 +337,11 @@ impl LoxInstance {
     };
 
     Rc::new(method_instance)
+  }
+}
+
+impl std::fmt::Display for LoxInstance {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(f, "Object({})", &self.class)
   }
 }

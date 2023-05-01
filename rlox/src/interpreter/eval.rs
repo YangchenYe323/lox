@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use rlox_ast::{facades::Expr, visit::AstVisitor, BinaryOp, UnaryOp};
 
 use super::{
@@ -98,8 +100,8 @@ fn equals(left_operand: &LoxValueKind, right_operand: &LoxValueKind) -> EvalResu
   match (left_operand, right_operand) {
     (LoxValueKind::Number(l), LoxValueKind::Number(r)) => Ok(LoxValueKind::Boolean(l == r)),
     (LoxValueKind::String(l), LoxValueKind::String(r)) => Ok(LoxValueKind::Boolean(l == r)),
-    (LoxValueKind::ObjectId(id1), LoxValueKind::ObjectId(id2)) => {
-      Ok(LoxValueKind::Boolean(id1 == id2))
+    (LoxValueKind::Object(id1), LoxValueKind::Object(id2)) => {
+      Ok(LoxValueKind::Boolean(Rc::ptr_eq(id1, id2)))
     }
     (LoxValueKind::Nil, LoxValueKind::Nil) => Ok(LoxValueKind::Boolean(true)),
     _ => Ok(LoxValueKind::Boolean(false)),

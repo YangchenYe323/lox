@@ -17,26 +17,21 @@ use self::{
   builtin_functions::{builtin_get_object_id, builtin_heap, builtin_print, builtin_time},
   diagnostics::{no_such_property, SpannedLoxRuntimeErrorWrapper},
   eval::{logical_and, logical_or, BinaryEval, UnaryEval},
-  runtime::Environment,
   scope::Scope,
-  types::{Function, LoxCallable, LoxClass, LoxValueKind, ObjectId},
+  types::{Function, LoxCallable, LoxClass, LoxValueKind},
 };
 
 pub use self::diagnostics::{LoxRuntimeError, SpannedLoxRuntimeError};
-pub use self::objprint::Printable;
 
 mod builtin_functions;
 mod diagnostics;
 mod eval;
-mod objprint;
-mod runtime;
 mod scope;
 mod types;
 
 /// [Interpreter] manages all the runtime states of a intepreting session, including memory environment,
 /// symbol resolution and an output buffer. It is responsible for interpreting parsed AST constructs.
 pub struct Interpreter {
-  environment: Environment,
   context: ExecutionContext,
   active_scope: Rc<Scope>,
   output: String,
@@ -51,17 +46,12 @@ impl Default for Interpreter {
 impl Interpreter {
   pub fn new() -> Self {
     let context = ExecutionContext::default();
-    let (environment, active_scope) = setup_globals();
+    let active_scope = setup_globals();
     Self {
-      environment,
       context,
       active_scope,
       output: String::new(),
     }
-  }
-
-  pub fn value_to_string(&self, value: &LoxValueKind) -> String {
-    value.to_string(&self.environment)
   }
 
   pub fn drain_output(&mut self) -> String {
@@ -138,7 +128,7 @@ impl AstVisitor for Interpreter {
 
   fn visit_class_declaration(&mut self, class_decl: ClassDecl) -> Self::Ret {
     let name = class_decl.name();
-    let object = self.declare_variable(name, LoxValueKind::nil());
+    let class_scope = self.declare_variable(name, LoxValueKind::nil());
 
     // Resolve inheritance
     let super_class = if let Some(parent) = class_decl.superclass() {
@@ -146,7 +136,7 @@ impl AstVisitor for Interpreter {
         .active_scope
         .get_lvalue_symbol(parent)
         .ok_or_else(|| class_decl.wrap(LoxRuntimeError::UnresolvedReference))?;
-      match self.environment.get_rvalue(object) {
+      match object {
         LoxValueKind::Class(c) => Some(c),
         value => return Err(class_decl.wrap(LoxRuntimeError::InvalidInherit(value.type_name()))),
       }
@@ -155,22 +145,20 @@ impl AstVisitor for Interpreter {
     };
 
     let class = LoxClass::new(class_decl, super_class, self);
-    self
-      .environment
-      .assign(object, LoxValueKind::Class(Rc::new(class)));
-    Ok(LoxValueKind::nil())
+    let value = LoxValueKind::Class(Rc::new(class));
+    class_scope.assign_current_level(name, value.clone());
+    Ok(value)
   }
 
   fn visit_function_declaration(&mut self, fn_decl: FnDecl) -> Self::Ret {
     // This ensures that the function can find itself in the closure to enable recursion.
     let name = fn_decl.name();
-    let object = self.declare_variable(name, LoxValueKind::nil());
-    let closure = Rc::clone(&self.active_scope);
+    let closure = self.declare_variable(name, LoxValueKind::nil());
 
-    let function = Function::new(false, fn_decl, closure);
-    self
-      .environment
-      .assign(object, LoxValueKind::Callable(Rc::new(function)));
+    let function = Function::new(false, fn_decl, Rc::clone(&closure));
+    let value = LoxValueKind::Callable(Rc::new(function));
+    closure.assign_current_level(name, value);
+
     Ok(LoxValueKind::nil())
   }
 
@@ -223,8 +211,6 @@ impl AstVisitor for Interpreter {
       .active_scope
       .get_lvalue_symbol(INTERNER.with_borrow_mut(|i| i.intern("this")))
       .unwrap();
-    // Has to be an object id
-    let object = self.environment.get_rvalue(object);
     Ok(object)
   }
 
@@ -244,25 +230,29 @@ impl AstVisitor for Interpreter {
     }
 
     let is_super = matches!(member_expr.object(), Expr::Super(_));
-    let LoxValueKind::ObjectId(id) = object else {
+    let LoxValueKind::Object(id) = object else {
       return Err(member_expr.wrap(LoxRuntimeError::InvalidMemberAccess(object.type_name())));
     };
-    let LoxValueKind::Object(object) = self.environment.get_rvalue(id) else { unreachable!() };
 
     // Search in property
-    if let Some(property) = object.fields.get(&member_expr.property()) {
-      Ok(self.environment.get_rvalue(*property))
+    let id = id.borrow();
+    if let Some(property) = id.fields.get(&member_expr.property()) {
+      Ok(property.clone())
     } else {
       let method = if is_super {
         let super_var = INTERNER.with_borrow_mut(|i| i.intern("super"));
-        let super_class = self.active_scope.get_lvalue_symbol(super_var).ok_or_else(|| member_expr.wrap(LoxRuntimeError::NoSuper))?;
-        let LoxValueKind::Class(c) = self.environment.get_rvalue(super_class) else { unreachable!() };
+        let super_class = self
+          .active_scope
+          .get_lvalue_symbol(super_var)
+          .ok_or_else(|| member_expr.wrap(LoxRuntimeError::NoSuper))?;
+        let LoxValueKind::Class(c) = super_class else { unreachable!() };
         c.resolve_method(member_expr.property())
       } else {
-        object.class.resolve_method(member_expr.property())
-      }.ok_or_else(|| member_expr.wrap(no_such_property(member_expr.property())))?;
+        id.class.resolve_method(member_expr.property())
+      }
+      .ok_or_else(|| member_expr.wrap(no_such_property(member_expr.property())))?;
 
-      Ok(LoxValueKind::Callable(object.bind_this(&method)))
+      Ok(LoxValueKind::Callable(id.bind_this(&method)))
     }
   }
 
@@ -282,9 +272,7 @@ impl AstVisitor for Interpreter {
           for arg in call_expr.argument_list().arguments() {
             arguments.push(evaluator.visit_expression(arg)?);
           }
-          LoxClass::new_instance(c, evaluator, arguments)
-            .map(LoxValueKind::ObjectId)
-            .map_err(|e| call_expr.wrap(e))
+          LoxClass::new_instance(c, evaluator, arguments).map_err(|e| call_expr.wrap(e))
         }
         c => Err(call_expr.wrap(LoxRuntimeError::InalidCall(c.type_name()))),
       }
@@ -293,10 +281,23 @@ impl AstVisitor for Interpreter {
 
   fn visit_assignment_expression(&mut self, expr: AssignExpr) -> Self::Ret {
     let target = expr.target();
-    let value = expr.value();
-    let target = self.resolve_lvalue(target).map_err(|e| expr.wrap(e))?;
-    let value = self.visit_expression(value)?;
-    self.environment.assign(target, value.clone());
+    let value: LoxValueKind = self.visit_expression(expr.value())?;
+
+    match target {
+      AssignTarget::Ident(var) => self
+        .active_scope
+        .assign(var.var_symbol(), value.clone())
+        .map_err(|e| expr.wrap(e))?,
+      AssignTarget::Member(member) => {
+        let object = self.visit_expression(member.object())?;
+        let LoxValueKind::Object(id) = object else {
+          return Err(expr.wrap(LoxRuntimeError::InvalidMemberAccess(object.type_name())));
+        };
+        let property = member.property();
+        id.borrow_mut().fields.insert(property, value.clone());
+      }
+    }
+
     Ok(value)
   }
 
@@ -351,7 +352,7 @@ impl AstVisitor for Interpreter {
       .active_scope
       .get_lvalue_symbol(reference)
       .ok_or_else(|| var_reference.wrap(LoxRuntimeError::UnresolvedReference))?;
-    Ok(self.environment.get_rvalue(lvalue))
+    Ok(lvalue)
   }
 
   fn visit_nil(&mut self, _nil: NilLit) -> Self::Ret {
@@ -382,11 +383,9 @@ impl Interpreter {
     result
   }
 
-  fn declare_variable(&mut self, var: SymbolId, value: LoxValueKind) -> ObjectId {
-    let object = self.environment.new_object();
-    self.environment.assign(object, value);
-    self.active_scope = Rc::new(self.active_scope.define(var, object));
-    object
+  fn declare_variable(&mut self, var: SymbolId, value: LoxValueKind) -> Rc<Scope> {
+    self.active_scope = Rc::new(self.active_scope.define(var, value));
+    Rc::clone(&self.active_scope)
   }
 
   fn with_scope<T>(&mut self, new_scope: Rc<Scope>, f: impl FnOnce(&mut Interpreter) -> T) -> T {
@@ -403,37 +402,6 @@ impl Interpreter {
       .contains(ExecutionContext::IN_LOOP | ExecutionContext::BREAK)
   }
 
-  fn resolve_lvalue(&mut self, target: AssignTarget) -> Result<ObjectId, LoxRuntimeError> {
-    match target {
-      AssignTarget::Ident(var) => self
-        .active_scope
-        .get_lvalue_symbol(var.var_symbol())
-        .ok_or_else(|| LoxRuntimeError::UnresolvedReference),
-      AssignTarget::Member(member) => {
-        let object = self
-          .visit_expression(member.object())
-          .map_err(LoxRuntimeError::from)?;
-
-        // We can't do "string".c or 1.c
-        let LoxValueKind::ObjectId(id) = object else {
-          return Err(LoxRuntimeError::InvalidMemberAccess(object.type_name()));
-        };
-        let LoxValueKind::Object(mut object) = self.environment.get_rvalue(id) else {
-          unreachable!()
-        };
-
-        let property = object
-          .fields
-          .entry(member.property())
-          .or_insert_with(|| self.environment.new_object());
-        let property = *property;
-        self.environment.assign(id, LoxValueKind::Object(object));
-
-        Ok(property)
-      }
-    }
-  }
-
   fn to_return(&self) -> bool {
     self
       .context
@@ -445,24 +413,21 @@ impl Interpreter {
   }
 }
 
-fn setup_globals() -> (Environment, Rc<Scope>) {
-  let mut env = Environment::default();
+fn setup_globals() -> Rc<Scope> {
   let mut scope = Rc::new(Scope::default());
-  populate_global(&mut env, &mut scope, "time", builtin_time);
-  populate_global(&mut env, &mut scope, "print", builtin_print);
-  populate_global(&mut env, &mut scope, "heap", builtin_heap);
-  populate_global(&mut env, &mut scope, "object_id", builtin_get_object_id);
-  (env, scope)
+  populate_global(&mut scope, "time", builtin_time);
+  populate_global(&mut scope, "print", builtin_print);
+  populate_global(&mut scope, "heap", builtin_heap);
+  populate_global(&mut scope, "object_id", builtin_get_object_id);
+  scope
 }
 
 fn populate_global(
-  environment: &mut Environment,
   symbols: &mut Rc<Scope>,
   name: &'static str,
   value: impl FnOnce(SymbolId) -> LoxValueKind,
 ) {
   let symbol = INTERNER.with_borrow_mut(|interner| interner.intern(name));
-  let object = environment.new_object();
-  *symbols = Rc::new(Scope::new(Some((symbol, object)), Some(Rc::clone(symbols))));
-  environment.assign(object, value(symbol));
+  let object = value(symbol);
+  *symbols = Rc::new(symbols.define(symbol, object));
 }

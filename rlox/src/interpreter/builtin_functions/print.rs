@@ -4,7 +4,6 @@ use rlox_span::SymbolId;
 
 use crate::interpreter::{
   diagnostics::{system_error, LoxRuntimeError},
-  objprint::Printable,
   types::{LoxCallable, LoxValueKind},
   Interpreter,
 };
@@ -23,9 +22,7 @@ impl LoxCallable for Print {
       if idx > 0 {
         write!(&mut evaluator.output, " ").map_err(system_error)?;
       }
-      arg
-        .print(&evaluator.environment, &mut evaluator.output)
-        .map_err(system_error)?;
+      write!(&mut evaluator.output, "{}", arg).map_err(system_error)?;
     }
     writeln!(&mut evaluator.output).map_err(system_error)?;
     Ok(LoxValueKind::nil())

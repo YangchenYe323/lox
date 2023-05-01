@@ -33,9 +33,6 @@ impl LoxCallable for GetObjectId {
       LoxValueKind::Callable(_) => {
         writeln!(&mut evaluator.output, "Callable").map_err(system_error)?;
       }
-      LoxValueKind::ObjectId(object) => {
-        writeln!(&mut evaluator.output, "{:?}", object).map_err(system_error)?;
-      }
       LoxValueKind::Nil => {
         writeln!(&mut evaluator.output, "nil").map_err(system_error)?;
       }
