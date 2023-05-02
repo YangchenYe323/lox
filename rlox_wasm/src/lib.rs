@@ -60,7 +60,7 @@ impl InterpreterHandle {
       Ok(returned) => {
         let returned = returned.to_string();
         let stdout = self.interpreter.drain_output();
-        let output = returned + &stdout;
+        let output = stdout + &returned;
         InterpreterResult::new(true, output)
       }
       Err(e) => {
