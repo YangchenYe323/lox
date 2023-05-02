@@ -17,9 +17,6 @@ crate-type = ["cdylib", "rlib"]
 wasm-bindgen = "0.2.74"
 js-sys = "0.3.61"
 miette = { workspace = true }
-serde = { workspace = true }
-serde-wasm-bindgen = "0.4"
-wee_alloc = "0.4.5"
 
 rlox = { workspace = true }
 rlox_ast = { workspace = true }
