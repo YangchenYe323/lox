@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import Terminal, { ColorMode, TerminalOutput } from "react-terminal-ui";
 import { Editor } from "@monaco-editor/react";
+import { editor } from "monaco-editor";
 import { Button } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
 import dynamic from "next/dynamic";
@@ -37,6 +38,19 @@ const Home = dynamic({
         TerminalOutput[]
       >([]);
       const [code, setCode] = useState(defaultCode);
+
+      const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+
+      // Re-layout the editor on screen resize
+      useEffect(() => {
+        const editorLayout = () => {
+          if (editorRef.current) {
+            editorRef.current.layout({} as editor.IDimension);
+          }
+        };
+        window.addEventListener("resize", editorLayout);
+        return () => window.removeEventListener("resize", editorLayout);
+      }, []);
 
       const codeOutput = (code: string) => {
         return (
@@ -86,7 +100,7 @@ const Home = dynamic({
             </Button>
           </div>
           <div className="flex flex-col w-full h-full mt-20">
-            <div className="flex flex-row h-2/3 w-full">
+            <div className="flex flex-row justify-around h-2/3 w-full">
               <Editor
                 height="100%"
                 defaultLanguage="c"
@@ -94,6 +108,9 @@ const Home = dynamic({
                 onChange={(code) => {
                   let c = code || "";
                   setCode(c);
+                }}
+                onMount={(editor, monaco) => {
+                  editorRef.current = editor;
                 }}
               />
               <Terminal
