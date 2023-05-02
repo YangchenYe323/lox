@@ -11,10 +11,7 @@ use crate::lexer::{lex_source, Lex, LexerError, Token, TokenKind};
 
 use rlox_span::Span;
 
-use self::{
-  context::ParserContextFlags,
-  diagnostics::unexpected_token,
-};
+use self::{context::ParserContextFlags, diagnostics::unexpected_token};
 
 pub use self::diagnostics::ParserError;
 
@@ -628,7 +625,9 @@ impl Parser {
       }
       TokenKind::Super => {
         if !self.in_class() {
-            self.recovered_errors.push(ParserError::SuperOutsideClass(self.cur_token().span));
+          self
+            .recovered_errors
+            .push(ParserError::SuperOutsideClass(self.cur_token().span));
         }
         let span = self.cur_token().span;
         self.advance();

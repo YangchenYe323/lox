@@ -1,3 +1,5 @@
+#![allow(clippy::uninlined_format_args)]
+
 mod instructions;
 mod lineno;
 mod values;

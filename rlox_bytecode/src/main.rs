@@ -1,3 +1,5 @@
+#![allow(clippy::uninlined_format_args)]
+
 use rlox_bytecode::{Chunk, Instruction, OpCode, Value};
 
 fn main() {

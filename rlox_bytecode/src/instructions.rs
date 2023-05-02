@@ -3,8 +3,6 @@ use crate::{lineno::LineBuffer, values::Value};
 use super::values::ValueArray;
 use bytes::{Buf, BufMut};
 
-pub type AddressType = u8;
-
 /// [OpCode] of a bytecode instruction
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(u8)]
@@ -36,7 +34,7 @@ impl From<u8> for OpCode {
 pub enum Instruction {
   /// Simple Instructions with no address codes
   Simple(OpCode),
-  OneOperand(OpCode, AddressType),
+  OneOperand(OpCode, u8),
 }
 
 impl Instruction {
@@ -71,17 +69,21 @@ impl Chunk {
 
   pub fn iter(&self) -> ChunkIter<'_> {
     ChunkIter {
-      original: self.instructions.as_ptr(),
       instructions: &self.instructions,
     }
   }
 
+  pub fn iter_with_offset(&self) -> ChunkIterWithOffset<'_> {
+    let inner = self.iter();
+    let original = self.instructions.as_ptr();
+    ChunkIterWithOffset { original, inner }
+  }
+
   pub fn disassemble(&self, name: &str, w: &mut impl std::fmt::Write) -> std::fmt::Result {
     writeln!(w, "== {} ==", name)?;
-    let mut iter = self.iter();
-    let mut idx = 0;
-
-    while let Some((offset, instruction)) = iter.next_with_offset() {
+    let iter = self.iter_with_offset();
+    for (idx, (offset, instruction)) in iter.enumerate() {
+      let idx = idx as u32;
       // disassemble offset in binary
       write!(w, "{:#08x} ", offset)?;
 
@@ -92,7 +94,6 @@ impl Chunk {
       } else {
         write!(w, "{:4} ", current_line)?;
       }
-      idx += 1;
 
       // disassemble instruction
       match instruction {
@@ -114,20 +115,7 @@ impl std::fmt::Display for Chunk {
 }
 
 pub struct ChunkIter<'a> {
-  original: *const u8,
   instructions: &'a [u8],
-}
-
-impl<'a> ChunkIter<'a> {
-  pub fn current_offset(&self) -> usize {
-    // SAFETY: original and instructions are derived from the same object.
-    unsafe { self.instructions.as_ptr().offset_from(self.original) as usize }
-  }
-
-  pub fn next_with_offset(&mut self) -> Option<(usize, Instruction)> {
-    let offset = self.current_offset();
-    self.next().map(|instruction| (offset, instruction))
-  }
 }
 
 impl<'a> Iterator for ChunkIter<'a> {
@@ -145,6 +133,21 @@ impl<'a> Iterator for ChunkIter<'a> {
         Some(Instruction::OneOperand(OpCode::Constant, operand))
       }
     }
+  }
+}
+
+pub struct ChunkIterWithOffset<'a> {
+  original: *const u8,
+  inner: ChunkIter<'a>,
+}
+
+impl<'a> Iterator for ChunkIterWithOffset<'a> {
+  type Item = (usize, Instruction);
+
+  fn next(&mut self) -> Option<Self::Item> {
+    // SAFETY: original and instructions are derived from the same object.
+    let offset = unsafe { self.inner.instructions.as_ptr().offset_from(self.original) as usize };
+    self.inner.next().map(|i| (offset, i))
   }
 }
 
@@ -168,14 +171,13 @@ mod tests {
     chunk.add_constant(Value::Number(1.0));
     chunk.add_instruction(Instruction::OneOperand(OpCode::Constant, 0), 0);
     chunk.add_instruction(Instruction::Simple(OpCode::Return), 0);
-    let mut iter = chunk.iter();
+    let mut iter = chunk.iter_with_offset();
 
     assert_eq!(
-      Some(Instruction::OneOperand(OpCode::Constant, 0)),
+      Some((0, Instruction::OneOperand(OpCode::Constant, 0))),
       iter.next()
     );
-    assert_eq!(2, iter.current_offset());
-    assert_eq!(Some(Instruction::Simple(OpCode::Return)), iter.next());
+    assert_eq!(Some((2, Instruction::Simple(OpCode::Return))), iter.next());
     assert_eq!(None, iter.next());
   }
 }
