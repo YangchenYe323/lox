@@ -9,6 +9,7 @@ members = [
   "rlox_wasm",
   "rlox_bytecode",
 ]
+resolver = "2"
 
 [workspace.package]
 authors = ["Yangchen <eikasia30@gmail.com>"]

@@ -1,6 +1,6 @@
 #![warn(rust_2018_idioms)]
 #![allow(clippy::uninlined_format_args, clippy::mut_from_ref)]
-#![feature(local_key_cell_methods, let_chains)]
+#![feature(let_chains)]
 
 //! This crate implements a tree-walking interpreter in rust from [crafting-interpreters](https://craftinginterpreters.com/)
 
