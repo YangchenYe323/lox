@@ -1,9 +1,8 @@
 ---
-source: rlox/tests/test.rs
+source: rlox_bin/tests/test.rs
 assertion_line: 19
 expression: output
 ---
-
   × Break statement cannot be used outside of loop
    ╭────
  1 │ break;

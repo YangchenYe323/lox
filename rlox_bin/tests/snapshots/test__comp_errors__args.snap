@@ -1,9 +1,8 @@
 ---
-source: rlox/tests/test.rs
+source: rlox_bin/tests/test.rs
 assertion_line: 19
 expression: output
 ---
-
   × Function call can accept at most 255 arguments
     ╭─[1:1]
   1 │ ╭─▶ too_many_args(a, a, a, a, a, a, a, a, a,

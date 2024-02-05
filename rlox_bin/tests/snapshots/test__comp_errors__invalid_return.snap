@@ -1,9 +1,8 @@
 ---
-source: rlox/tests/test.rs
+source: rlox_bin/tests/test.rs
 assertion_line: 19
 expression: output
 ---
-
   × Return statement cannot be used outside of function
    ╭─[1:1]
  1 │ if 1 < 2 {

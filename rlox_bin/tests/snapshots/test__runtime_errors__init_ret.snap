@@ -1,10 +1,9 @@
 ---
-source: rlox/tests/test.rs
+source: rlox_bin/tests/test.rs
 assertion_line: 19
 expression: output
 ---
 Number(1.0)
-
   × RuntimeError: Cannot return from initializer
    ╭─[6:1]
  6 │ 

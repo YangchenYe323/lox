@@ -1,9 +1,8 @@
 ---
-source: rlox/tests/test.rs
+source: rlox_bin/tests/test.rs
 assertion_line: 19
 expression: output
 ---
-
   × Function can have at most 255 parameters
     ╭─[1:1]
   1 │ ╭─▶ fun too_many_params(a, a, a, a, a, a, a, a, a,

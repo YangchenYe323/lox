@@ -1,9 +1,8 @@
 ---
-source: rlox/tests/test.rs
-assertion_line: 21
+source: rlox_bin/tests/test.rs
+assertion_line: 19
 expression: output
 ---
-
   × Unexpected Token 1
    ╭────
  1 │ print 1
